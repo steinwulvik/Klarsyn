@@ -1,0 +1,1349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Klarsyn: concept demo for explainable credit decisions and early warning at the fictional Lysvik Bank (synthetic data).">
+<title>Klarsyn – Lysvik Bank</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: lys toppmeny med to faner (løsningsforslag / konseptdemo) og undermeny, sentrert arbeidsflate. Indigo for handling, rav for «hva måtte vært annerledes». */
+:root{
+  --bg:#F4F5F9; --surface:#FFFFFF; --surface-2:#ECEEF5; --ink:#161B2E; --muted:#555E78; --line:#D9DDEA;
+  --accent:#3D46B8; --accent-ink:#FFFFFF; --accent-soft:#E6E8FB; --glow:#B87A0E;
+  --ok:#1B7244; --ok-soft:#DCF1E4; --warn:#8A5300; --warn-soft:#FAEBCF; --bad:#B0281F; --bad-soft:#F8DEDB; --info:#2C6599; --info-soft:#DFEBF6;
+  --head:#252C6E; --head-2:#2E3680; --head-ink:#FFFFFF; --head-muted:#C3C7EE; --head-line:#3A4290;
+  --f-display:"Manrope", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --r:12px; --r-s:8px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0F1220; --surface:#171B2D; --surface-2:#20253B; --ink:#E6E8F2; --muted:#A3A9C2; --line:#2C3250;
+  --accent:#9AA3FF; --accent-ink:#11143A; --accent-soft:#262C5A; --glow:#E7B04A;
+  --ok:#62C98E; --ok-soft:#14382A; --warn:#EDB04E; --warn-soft:#3A2B11; --bad:#F2877E; --bad-soft:#431C19; --info:#86B6E8; --info-soft:#18304A;
+  --head:#1B2052; --head-2:#21275F; --head-ink:#F2F3FF; --head-muted:#AEB3E0; --head-line:#2E3573;
+  color-scheme:dark; }}
+:root[data-theme="dark"]{
+  --bg:#0F1220; --surface:#171B2D; --surface-2:#20253B; --ink:#E6E8F2; --muted:#A3A9C2; --line:#2C3250;
+  --accent:#9AA3FF; --accent-ink:#11143A; --accent-soft:#262C5A; --glow:#E7B04A;
+  --ok:#62C98E; --ok-soft:#14382A; --warn:#EDB04E; --warn-soft:#3A2B11; --bad:#F2877E; --bad-soft:#431C19; --info:#86B6E8; --info-soft:#18304A;
+  --head:#1B2052; --head-2:#21275F; --head-ink:#F2F3FF; --head-muted:#AEB3E0; --head-line:#2E3573;
+  color-scheme:dark; }
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg); color:var(--ink); font-family:var(--f-body); font-size:15px; line-height:1.55; -webkit-font-smoothing:antialiased}
+body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--head)}
+a{color:var(--accent)}
+h1,h2,h3{text-wrap:balance; margin:0}
+h1{font-family:var(--f-display); font-weight:800; font-size:clamp(28px,4vw,40px); line-height:1.12; letter-spacing:-.025em}
+h2{font-family:var(--f-display); font-weight:700; font-size:23px; line-height:1.2; letter-spacing:-.015em}
+h3{font-size:15px; font-weight:600}
+p{margin:0}
+.mono{font-family:var(--f-mono); font-size:.88em}
+.num{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.eyebrow{font-size:11.5px; letter-spacing:.09em; text-transform:uppercase; font-weight:600; color:var(--muted)}
+:focus-visible{outline:2px solid var(--glow); outline-offset:2px}
+
+.content{margin-inline:auto; padding-block:8px 64px; padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px)); width:100%; max-width:1180px}
+.content.narrow{max-width:980px}
+
+/* Regelverksbryter */
+.regime{display:flex; align-items:center; gap:8px; font-size:13px}
+.regime[hidden]{display:none}
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:var(--r-s); overflow:hidden; background:var(--surface)}
+.seg button{font:inherit; font-size:12.5px; padding:5px 11px; border:0; background:transparent; color:var(--muted); cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); font-weight:600}
+
+/* Felles komponenter */
+.stack{display:flex; flex-direction:column; gap:16px}
+.stack-l{display:flex; flex-direction:column; gap:28px}
+.row{display:flex; flex-wrap:wrap; gap:12px; align-items:center}
+.grid2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px}
+.grid3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:18px 20px; min-width:0}
+.panel > h3{margin-bottom:10px}
+h2.h-card{font-family:var(--f-body); font-size:15px; font-weight:600; line-height:1.55; letter-spacing:0}
+.panel > h2.h-card{margin-bottom:10px}
+.panel-h{display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:12px; flex-wrap:wrap}
+.lede{font-size:17px; line-height:1.6; max-width:68ch; color:var(--ink)}
+.prose{max-width:68ch; display:flex; flex-direction:column; gap:10px}
+.btn{font:inherit; font-size:14px; font-weight:600; border-radius:var(--r-s); padding:8px 14px; cursor:pointer; border:1px solid var(--line); background:var(--surface); color:var(--ink); text-decoration:none; display:inline-flex; align-items:center; gap:6px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--bad); border-color:color-mix(in srgb, var(--bad) 40%, var(--line))}
+.btn.sm{font-size:12.5px; padding:5px 10px}
+.pill{display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; padding:2px 9px; border-radius:20px; white-space:nowrap; background:var(--surface-2); color:var(--muted)}
+.pill.ok{background:var(--ok-soft); color:var(--ok)} .pill.warn{background:var(--warn-soft); color:var(--warn)}
+.pill.bad{background:var(--bad-soft); color:var(--bad)} .pill.info{background:var(--info-soft); color:var(--info)}
+.pill.acc{background:var(--accent-soft); color:var(--accent)}
+.dot{width:7px; height:7px; border-radius:50%; background:currentColor; display:inline-block}
+.note{display:flex; gap:10px; align-items:flex-start; background:var(--info-soft); color:var(--ink); border-radius:var(--r-s); padding:10px 14px; font-size:13.5px}
+.note b{color:var(--info)}
+.note.warn{background:var(--warn-soft)} .note.warn b{color:var(--warn)}
+.note.ok{background:var(--ok-soft)} .note.ok b{color:var(--ok)}
+.sample{display:flex; flex-wrap:wrap; gap:6px 12px; align-items:center; border:1px dashed color-mix(in srgb, var(--accent) 50%, var(--line)); background:var(--accent-soft); border-radius:var(--r-s); padding:9px 14px; font-size:13px}
+.sample b{color:var(--accent)}
+.tbl-wrap{position:relative; overflow-x:auto; border:1px solid var(--line); border-radius:var(--r); background:var(--surface)}
+table{border-collapse:collapse; width:100%; font-size:14px}
+th{text-align:left; font-size:11.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); font-weight:600; padding:10px 14px; border-bottom:1px solid var(--line); background:var(--surface-2); white-space:nowrap}
+td{padding:11px 14px; border-bottom:1px solid var(--line); vertical-align:top}
+tr:last-child td{border-bottom:0}
+#caseRows .mono{white-space:nowrap}
+.tbl-wrap table{min-width:720px}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover td{background:color-mix(in srgb, var(--accent-soft) 45%, transparent)}
+.kpis{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px}
+.kpi{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; display:flex; flex-direction:column; gap:4px; min-width:0}
+.kpi .v{font-size:26px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.kpi .l{font-size:12.5px; color:var(--muted)}
+.kpi.alert .v{color:var(--bad)}
+label.f{display:flex; flex-direction:column; gap:5px; font-size:13px; font-weight:600}
+label.f span.h{font-weight:400; color:var(--muted); font-size:12.5px}
+input[type=text],input[type=number],input[type=date],select,textarea{font:inherit; font-size:14px; padding:8px 10px; border:1px solid var(--line); border-radius:var(--r-s); background:var(--surface); color:var(--ink); width:100%}
+textarea{min-height:120px; resize:vertical; line-height:1.5}
+.choice{display:flex; flex-wrap:wrap; gap:8px}
+.choice label{display:flex; align-items:center; gap:7px; border:1px solid var(--line); border-radius:var(--r-s); padding:7px 11px; font-size:13.5px; cursor:pointer; background:var(--surface)}
+.choice label:has(input:checked){border-color:var(--accent); background:var(--accent-soft)}
+.choice input{accent-color:var(--accent); margin:0}
+.chk{display:flex; gap:9px; align-items:flex-start; font-size:14px; padding:7px 0; border-bottom:1px solid var(--line)}
+.chk:last-child{border-bottom:0}
+.chk input{accent-color:var(--accent); margin-top:4px}
+.chk small{display:block; color:var(--muted); font-size:12.5px}
+.ev{display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:10px; align-items:start; padding:10px 0; border-bottom:1px solid var(--line); font-size:14px}
+.ev:last-child{border-bottom:0}
+.ev .src{font-size:12px; color:var(--muted)}
+.ico{width:20px; height:20px; border-radius:50%; display:grid; place-items:center; font-size:12px; font-weight:700}
+.ico.ok{background:var(--ok-soft); color:var(--ok)} .ico.bad{background:var(--bad-soft); color:var(--bad)} .ico.warn{background:var(--warn-soft); color:var(--warn)} .ico.na{background:var(--surface-2); color:var(--muted)}
+
+/* Fristklokke */
+.clock{display:flex; gap:14px; align-items:center}
+.clock .ring{--p:0; width:64px; height:64px; border-radius:50%; background:conic-gradient(var(--c,var(--accent)) calc(var(--p)*1%), var(--surface-2) 0); display:grid; place-items:center; flex:none}
+.clock .ring i{width:48px; height:48px; border-radius:50%; background:var(--surface); display:grid; place-items:center; font-style:normal; font-weight:700; font-size:15px; font-variant-numeric:tabular-nums}
+.deadline{font-variant-numeric:tabular-nums; white-space:nowrap}
+.deadline.bad{color:var(--bad); font-weight:600} .deadline.warn{color:var(--warn); font-weight:600}
+
+/* Triage */
+.triage{border:1px solid var(--line); border-radius:var(--r); overflow:hidden; background:var(--surface)}
+.triage .head{padding:14px 18px; display:flex; flex-direction:column; gap:4px; border-bottom:1px solid var(--line)}
+.triage .head.t-uaut{background:var(--info-soft)} .triage .head.t-psr{background:var(--ok-soft)} .triage .head.t-autbank{background:var(--warn-soft)} .triage .head.t-annen{background:var(--surface-2)} .triage .head.t-ukjent{background:var(--surface-2)}
+.triage .head b{font-size:16px}
+.triage ol{margin:0; padding:12px 18px 14px 38px; display:flex; flex-direction:column; gap:6px; font-size:14px}
+.triage .basis{padding:0 18px 14px; font-size:12.5px; color:var(--muted)}
+.suggest{border-left:3px solid var(--accent); background:var(--accent-soft); padding:12px 16px; border-radius:0 var(--r-s) var(--r-s) 0; display:flex; flex-direction:column; gap:6px}
+.suggest b{font-size:15px}
+
+/* Tidslinje / logg */
+.log{list-style:none; margin:0; padding:0; display:flex; flex-direction:column}
+.log li{display:grid; grid-template-columns:96px minmax(0,1fr); gap:12px; padding:8px 0; border-bottom:1px solid var(--line); font-size:13.5px}
+.log li:last-child{border-bottom:0}
+.log time{color:var(--muted); font-variant-numeric:tabular-nums; font-size:12.5px}
+
+/* Behov-kort og prosess */
+.needs{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+.need{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:14px 16px; display:grid; grid-template-columns:34px minmax(0,1fr); gap:4px 12px}
+.need .k{font-family:var(--f-mono); font-size:12px; color:var(--accent); font-weight:500; padding-top:2px}
+.need h3{font-size:15px}
+.need p{grid-column:2; font-size:13.5px; color:var(--muted)}
+.need a{grid-column:2; font-size:13px; font-weight:600; text-decoration:none}
+.steps{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; counter-reset:s}
+.step{padding:16px 18px 16px 0; border-top:3px solid var(--line); position:relative; display:flex; flex-direction:column; gap:6px}
+.step.on{border-top-color:var(--accent)}
+.step .eyebrow{color:var(--accent)}
+.step p{font-size:13.5px; color:var(--muted)}
+.hero{display:grid; grid-template-columns:minmax(0,1.4fr) minmax(0,1fr); gap:28px; align-items:end; padding-bottom:6px}
+.meta{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:13px}
+.meta dt{color:var(--muted)} .meta dd{margin:0; font-weight:500}
+
+/* Business case */
+.bc{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:16px}
+.slider{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:2px 12px; padding:8px 0; border-bottom:1px solid var(--line)}
+.slider:last-child{border-bottom:0}
+.slider label{font-size:13.5px}
+.slider output{font-variant-numeric:tabular-nums; font-weight:600; font-size:13.5px; text-align:right}
+.slider input{grid-column:1 / -1; accent-color:var(--accent); width:100%}
+.slider small{grid-column:1 / -1; color:var(--muted); font-size:12px}
+.bcline{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); font-size:14px}
+.bcline span:last-child{font-variant-numeric:tabular-nums; font-weight:600; text-align:right}
+.bcline.tot{border-bottom:0; border-top:2px solid var(--ink); font-size:16px; padding-top:12px}
+.bcbar{height:12px; border-radius:6px; background:var(--surface-2); overflow:hidden; display:flex}
+.bcbar i{display:block; height:100%}
+
+/* Diagram */
+.arch{overflow-x:auto}
+.arch svg{min-width:720px; width:100%; height:auto; display:block}
+.arch text{font-family:var(--f-body)}
+
+/* Gantt */
+.gantt{display:grid; grid-template-columns:200px minmax(0,1fr); gap:8px 14px; align-items:center; font-size:13.5px}
+.gantt .track{position:relative; height:26px; background:var(--surface-2); border-radius:4px}
+.gantt .bar{position:absolute; top:3px; bottom:3px; border-radius:3px; background:var(--accent); color:var(--accent-ink); font-size:11.5px; font-weight:600; display:flex; align-items:center; padding:0 8px; white-space:nowrap; overflow:hidden}
+.gantt .bar.alt{background:var(--glow); color:#04222A}
+.gantt .bar.ghost{background:transparent; border:1.5px dashed var(--accent); color:var(--accent)}
+.gantt .scale{position:relative; height:16px; font-size:11.5px; color:var(--muted); font-family:var(--f-mono)}
+.gantt .scale span{position:absolute; transform:translateX(-50%)} .gantt .scale span:first-child{transform:none} .gantt .scale span:last-child{transform:translateX(-100%)}
+.gantt .lab small{display:block; font-size:12px; color:var(--muted); font-weight:400}
+
+/* Søyler */
+.bars{display:flex; flex-direction:column; gap:8px}
+.bars .b{display:grid; grid-template-columns:150px minmax(0,1fr) 54px; gap:10px; align-items:center; font-size:13px}
+.bars .b .t{height:14px; background:var(--surface-2); border-radius:3px; overflow:hidden}
+.bars .b .t i{display:block; height:100%; background:var(--accent); border-radius:3px}
+.bars .b span:last-child{text-align:right; font-variant-numeric:tabular-nums; font-weight:600}
+.cols{display:flex; align-items:flex-end; gap:10px; height:170px; padding-top:8px; border-bottom:1px solid var(--line)}
+.cols .c{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:4px; height:100%; min-width:0}
+.cols .c .stk{width:100%; max-width:44px; display:flex; flex-direction:column-reverse; border-radius:3px 3px 0 0; overflow:hidden}
+.cols .c .stk i{display:block; width:100%}
+.cols .c b{font-size:12px; font-variant-numeric:tabular-nums}
+.colx{display:flex; gap:10px; font-size:11.5px; color:var(--muted)} .colx span{flex:1; text-align:center}
+.legend{display:flex; flex-wrap:wrap; gap:6px 16px; font-size:12.5px; color:var(--muted)}
+.legend i{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:-1px}
+
+.toast{position:fixed; right:max(20px, calc(env(safe-area-inset-right,0px) + 20px)); bottom:calc(env(safe-area-inset-bottom,0px) + 20px); background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:var(--r-s); font-size:14px; z-index:20; box-shadow:0 6px 24px rgba(0,0,0,.2)}
+.filters{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.split{display:grid; grid-template-columns:minmax(0,1.5fr) minmax(0,1fr); gap:20px; align-items:start}
+.sticky{position:sticky; top:72px}
+.sources li{margin-bottom:6px; font-size:13.5px}
+.hr{height:1px; background:var(--line); border:0; margin:4px 0}
+
+@media (max-width:1080px){ .kpis{grid-template-columns:repeat(2,minmax(0,1fr))} .split{grid-template-columns:minmax(0,1fr)} .sticky{position:static} .hero{grid-template-columns:minmax(0,1fr)} .bc{grid-template-columns:minmax(0,1fr)} }
+@media (max-width:860px){
+  .grid2,.grid3,.needs{grid-template-columns:minmax(0,1fr)}
+  .steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .gantt{grid-template-columns:minmax(0,1fr)} .gantt .lab{font-weight:600}
+}
+@media (max-width:480px){ .kpis{grid-template-columns:minmax(0,1fr)} .steps{grid-template-columns:minmax(0,1fr)} .bars .b{grid-template-columns:100px minmax(0,1fr) 44px} }
+@media (prefers-reduced-motion:no-preference){ .view{animation:fade .25s ease-out} @keyframes fade{from{opacity:.4; transform:translateY(4px)} to{opacity:1; transform:none}} }
+.tools{display:flex; align-items:center; gap:12px; margin-left:auto; flex-wrap:wrap}
+.lang-switch{display:inline-flex; border:1px solid var(--line); border-radius:999px; overflow:hidden; flex-shrink:0}
+.lang-switch button{border:0; background:var(--surface); color:var(--muted); font:inherit; font-size:12px; font-weight:700; letter-spacing:.04em; padding:4px 10px; min-height:30px; min-width:40px; cursor:pointer}
+.lang-switch button+button{border-left:1px solid var(--line)}
+.lang-switch button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink)}
+.lang-switch button:hover:not([aria-pressed="true"]){background:var(--accent-soft); color:var(--ink)}
+.sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}
+
+/* Tillegg for Klarsyn */
+[hidden]{display:none !important}
+.btn:disabled{opacity:.45; cursor:not-allowed}
+.btn:disabled:hover{border-color:var(--line)}
+.factors{display:flex; flex-direction:column}
+.factor{display:grid; grid-template-columns:22px minmax(0,1fr) auto; gap:10px; align-items:start; padding:10px 0; border-bottom:1px solid var(--line); font-size:14px}
+.factor:last-child{border-bottom:0}
+.factor small{display:block; color:var(--muted); font-size:12.5px}
+.factor .val{font-variant-numeric:tabular-nums; font-weight:600; text-align:right; white-space:nowrap}
+.letter{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:22px 24px; font-size:14px; display:flex; flex-direction:column; gap:10px; box-shadow:0 1px 0 var(--line)}
+.letter h3{margin:0; font-size:16px; font-weight:700; font-family:var(--f-display)}
+.letter ul{margin:0; padding-left:20px; display:flex; flex-direction:column; gap:4px}
+.letter .sig{color:var(--muted); font-size:13px}
+.rights{list-style:none; margin:0; padding:0; display:flex; flex-direction:column}
+.rights li{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; padding:9px 0; border-bottom:1px solid var(--line); font-size:13.5px}
+.rights li:last-child{border-bottom:0}
+.rights li small{grid-column:1 / -1; color:var(--muted); font-size:12px}
+.flag{display:inline-flex; align-items:center; justify-content:center; font-family:var(--f-mono); font-size:11px; font-weight:600; border:1px solid var(--line); border-radius:4px; padding:0 5px; min-width:26px; color:var(--muted); background:var(--surface)}
+.cf{border-left:3px solid var(--glow); background:var(--accent-soft); padding:12px 16px; border-radius:0 var(--r-s) var(--r-s) 0; display:flex; flex-direction:column; gap:4px; font-size:14px}
+.stages{display:flex; flex-wrap:wrap; gap:0; font-size:12.5px}
+.stages span{padding:4px 10px 4px 14px; background:var(--surface-2); color:var(--muted); clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%, 8px 50%); margin-right:-4px}
+.stages span:first-child{clip-path:polygon(0 0, calc(100% - 8px) 0, 100% 50%, calc(100% - 8px) 100%, 0 100%); padding-left:10px}
+.stages span.on{background:var(--accent); color:var(--accent-ink); font-weight:600}
+.stages span.done{background:var(--accent-soft); color:var(--accent)}
+.cmp{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+.cmp div{background:var(--surface-2); border-radius:var(--r-s); padding:10px 14px}
+.cmp b{display:block; font-size:20px; font-variant-numeric:tabular-nums}
+.cmp small{color:var(--muted); font-size:12.5px}
+.timeline{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px}
+.timeline .t{border-top:3px solid var(--line); padding-top:10px; display:flex; flex-direction:column; gap:4px; font-size:13.5px}
+.timeline .t.on{border-top-color:var(--accent)}
+.timeline .t.later{border-top-style:dashed}
+.timeline .t b{font-size:15px}
+.timeline .t .d{font-family:var(--f-mono); font-size:12px; color:var(--accent)}
+.foot{margin-top:28px; padding-top:16px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); display:flex; flex-direction:column; gap:4px}
+@media (max-width:860px){ .cmp,.timeline{grid-template-columns:minmax(0,1fr)} }
+
+/* Toppmeny */
+.hdr{position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:var(--head); color:var(--head-ink)}
+.wrap{width:100%; max-width:1180px; margin-inline:auto; padding-left:max(16px, env(safe-area-inset-left,0px)); padding-right:max(16px, env(safe-area-inset-right,0px))}
+.hdr-in{display:flex; flex-wrap:wrap; align-items:center; gap:12px 24px; padding-block:12px}
+.brand{display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--head-ink)}
+.brand svg{flex:none}
+.brand b{font-family:var(--f-display); font-weight:800; font-size:17px; letter-spacing:-.01em; display:block; line-height:1.1}
+.brand small{display:block; font-size:11.5px; color:var(--head-muted); line-height:1.2}
+.groups{display:inline-flex; background:var(--head-2); border:1px solid var(--head-line); border-radius:999px; padding:3px; gap:2px}
+.groups a{padding:6px 14px; border-radius:999px; color:var(--head-muted); text-decoration:none; font-weight:600; font-size:13.5px; white-space:nowrap}
+.groups a[aria-current="true"]{background:var(--head-ink); color:var(--head)}
+.groups a:hover:not([aria-current="true"]){color:var(--head-ink)}
+.hdr .tools{margin-left:auto}
+.subnav{background:var(--head-2); border-top:1px solid var(--head-line)}
+.subnav .nav{display:none; gap:2px; overflow-x:auto; scrollbar-width:none}
+.app[data-group="prop"] .nav[data-group="prop"], .app[data-group="demo"] .nav[data-group="demo"]{display:flex}
+.nav a{display:inline-flex; align-items:center; gap:7px; padding:11px 12px 9px; color:var(--head-muted); text-decoration:none; font-size:14px; border-bottom:3px solid transparent; white-space:nowrap}
+.nav a:hover{color:var(--head-ink)}
+.nav a[aria-current="page"]{color:var(--head-ink); border-bottom-color:var(--glow); font-weight:600}
+.nav .cnt{font-family:var(--f-mono); font-size:11px; background:var(--head-line); color:var(--head-ink); padding:1px 7px; border-radius:20px; font-weight:500}
+.crumbbar{padding-block:18px 6px}
+.crumb{font-size:12.5px; color:var(--muted)}
+.crumb b{color:var(--ink); font-weight:600}
+.pagefoot{border-top:1px solid var(--line); margin-top:auto}
+.pagefoot .wrap{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px 20px; padding-block:16px; font-size:12.5px; color:var(--muted)}
+.pagefoot button{font:inherit; font-size:12.5px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:var(--r-s); padding:6px 12px; cursor:pointer}
+.pagefoot button:hover{border-color:var(--accent)}
+.app{min-height:100%; display:flex; flex-direction:column}
+.content.narrow{max-width:1180px}
+.panel,.kpi,.need,.tbl-wrap,.letter{box-shadow:0 1px 2px color-mix(in srgb, var(--ink) 6%, transparent)}
+.kpi .v{font-family:var(--f-display); font-weight:800}
+td.mono{white-space:nowrap}
+.tools{display:flex; align-items:center; gap:14px}
+.cust{display:inline-flex; align-items:center; padding-right:14px; border-right:1px solid var(--head-line)}
+.hero.top{align-items:start; grid-template-columns:minmax(0,1fr) 300px}
+@media (max-width:760px){ .hero.top{grid-template-columns:minmax(0,1fr)} }
+.metabox{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:16px 18px; display:flex; flex-direction:column; gap:14px; box-shadow:0 1px 2px color-mix(in srgb, var(--ink) 6%, transparent)}
+.metabox .meta{gap:6px 16px}
+.letter .lysvik, .metabox .lysvik{align-self:flex-start}
+td.mono{vertical-align:middle}
+@media (max-width:640px){ .cust{display:none} }
+.kpi[class*="t-"]{border-color:transparent; box-shadow:none}
+.kpi.t-acc{background:var(--accent-soft)} .kpi.t-acc .v{color:var(--accent)}
+.kpi.t-ok{background:var(--ok-soft)} .kpi.t-ok .v{color:var(--ok)}
+.kpi.t-warn{background:var(--warn-soft)} .kpi.t-warn .v{color:var(--warn)}
+.kpi.t-bad{background:var(--bad-soft)} .kpi.t-bad .v{color:var(--bad)}
+.kpi.t-info{background:var(--info-soft)} .kpi.t-info .v{color:var(--info)}
+.kpi[class*="t-"] .l{color:var(--ink); opacity:.78}
+.hdr .lang-switch{border-color:var(--head-line)}
+.hdr .lang-switch button{background:var(--head-2); color:var(--head-muted)}
+.hdr .lang-switch button+button{border-left-color:var(--head-line)}
+.hdr .lang-switch button[aria-pressed="true"]{background:var(--head-ink); color:var(--head)}
+.hdr .lang-switch button:hover:not([aria-pressed="true"]){background:var(--head-line); color:var(--head-ink)}
+.hdr :focus-visible{outline-color:var(--glow)}
+@media (max-width:640px){ .hdr .tools{margin-left:0} .groups{order:3; width:100%} .groups a{flex:1; text-align:center} .hdr{position:static} }
+.apisrc{display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-family:var(--f-mono); color:var(--info); background:var(--info-soft); border-radius:4px; padding:1px 7px; margin-top:4px; white-space:normal}
+.apidot{width:6px; height:6px; border-radius:50%; background:var(--info); flex:none}
+td.ep{white-space:normal !important; word-break:break-all; font-size:12px; min-width:180px}
+.rights li > span small{display:block; font-family:var(--f-mono); font-size:11.5px; color:var(--muted)}
+.note .apisrc{display:flex; width:fit-content; max-width:100%}
+.rights li b.num{font-variant-numeric:tabular-nums}
+.apilist{list-style:none; margin:0; padding:0; display:flex; flex-direction:column}
+.apilist li{display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 16px; padding:10px 0; border-bottom:1px solid var(--line); font-size:14px; align-items:start}
+.apilist li:last-child{border-bottom:0}
+.apilist small{display:block; color:var(--muted); font-size:12.5px}
+.apilist code{display:block; font-family:var(--f-mono); font-size:12px; color:var(--muted); word-break:break-all; margin-top:2px}
+.apilist a{white-space:nowrap; font-size:13px}
+@media (max-width:640px){ .apilist li{grid-template-columns:minmax(0,1fr)} }
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:var(--r-s); overflow:hidden; background:var(--surface)}
+.seg button{font:inherit; font-size:13.5px; border:0; background:transparent; color:var(--muted); padding:7px 14px; cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); font-weight:600}
+.bcg{display:flex; flex-direction:column; gap:8px; padding-bottom:12px; border-bottom:1px solid var(--line)}
+.bcg > b{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--accent)}
+.bcf{display:grid; grid-template-columns:minmax(0,1fr) 150px; gap:10px; align-items:center; font-size:13.5px}
+.bcin{display:flex; align-items:center; border:1px solid var(--line); border-radius:var(--r-s); background:var(--surface); overflow:hidden}
+.bcin:focus-within{border-color:var(--accent)}
+.bcin input{border:0; outline:0; background:transparent; font:inherit; font-variant-numeric:tabular-nums; width:100%; min-width:0; padding:6px 8px; text-align:right; color:var(--ink)}
+.bcin em{font-style:normal; font-size:12px; color:var(--muted); padding:0 8px 0 2px; min-width:24px}
+.bcrow{display:grid; grid-template-columns:150px minmax(0,1fr) 110px; gap:12px; align-items:center; font-size:13.5px}
+.bcrow .trk{display:block; height:12px; background:var(--surface-2); border-radius:6px; overflow:hidden}
+.bcrow i{display:block; height:100%; border-radius:6px}
+.bcrow i.ok{background:var(--ok)} .bcrow i.warn{background:var(--warn)}
+.bcrow b{text-align:right; font-variant-numeric:tabular-nums}
+.bc-k{grid-template-columns:repeat(2,minmax(0,1fr))}
+b.pos{color:var(--ok)} b.neg{color:var(--bad)}
+@media (max-width:480px){ .bcf{grid-template-columns:minmax(0,1fr)} .bcrow{grid-template-columns:110px minmax(0,1fr) 90px} }
+</style>
+</head>
+<body>
+<div class="app" data-group="prop">
+  <header class="hdr">
+    <div class="wrap hdr-in">
+      <a class="brand" href="#forslag">
+        <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect x="2" y="2" width="26" height="26" rx="8" fill="var(--glow)"/><path d="M8 19 L12.5 14.5 L16 17 L22 10.5" fill="none" stroke="var(--head)" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span><b>Klarsyn</b><small data-i18n="brandSub"></small></span>
+      </a>
+      <nav class="groups" data-i18n-aria="mainMenu">
+        <a href="#forslag" data-g="prop" data-i18n="grpProposal"></a>
+        <a href="#soknader" data-g="demo" data-i18n="grpDemo"></a>
+      </nav>
+      <div class="tools">
+        <span class="cust" id="custLogo"></span>
+        <div class="lang-switch" role="group" id="langSwitch">
+          <button type="button" data-lang="no" lang="nb" title="Norsk"><span aria-hidden="true">NO</span><span class="sr-only">Norsk</span></button>
+          <button type="button" data-lang="en" lang="en" title="English"><span aria-hidden="true">EN</span><span class="sr-only">English</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="subnav"><div class="wrap">
+      <nav class="nav" data-group="prop" data-i18n-aria="grpProposal">
+        <a href="#forslag" data-v="forslag" data-i18n="forslag"></a>
+        <a href="#regelverk" data-v="regelverk" data-i18n="regelverk"></a>
+        <a href="#losning" data-v="losning" data-i18n="losning"></a>
+        <a href="#business" data-v="business" data-i18n="business"></a>
+        <a href="#veien-videre" data-v="veien-videre" data-i18n="veien-videre"></a>
+        <a href="#om" data-v="om" data-i18n="om"></a>
+      </nav>
+      <nav class="nav" data-group="demo" data-i18n-aria="grpDemo">
+        <a href="#soknader" data-v="soknader"><span data-i18n="soknader"></span><span class="cnt" id="cntReview">0</span></a>
+        <a href="#varsling" data-v="varsling"><span data-i18n="varsling"></span><span class="cnt" id="cntWarn">0</span></a>
+        <a href="#innsikt" data-v="innsikt" data-i18n="innsikt"></a>
+      </nav>
+    </div></div>
+  </header>
+  <nav class="wrap crumbbar" data-i18n-aria="crumbNav"><div class="crumb" id="crumb"></div></nav>
+  <main class="content" id="view"></main>
+  <footer class="pagefoot"><div class="wrap"><span data-i18n="sideFoot"></span><button type="button" id="resetBtn" data-i18n="reset"></button></div></footer>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script>
+// ---------- Hjelpere ----------
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = {
+  get(k, f){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : f; }catch(e){ return f; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+
+// ---------- Språk ----------
+let LANG = (() => { try{ const v = sessionStorage.getItem('ci_lang'); if(v==='no'||v==='en') return v; }catch(e){} return 'en'; })();
+const L = (no, en) => LANG === 'en' ? en : no;
+const tx = v => v == null ? '' : typeof v === 'string' ? v : (LANG === 'en' ? (v.en ?? v.no) : v.no);
+const Lg = (no, en) => ({no, en});
+const LOC = () => LANG === 'en' ? 'en-GB' : 'nb-NO';
+const num = n => new Intl.NumberFormat(LOC(), {maximumFractionDigits:0}).format(Math.round(n));
+const money = (n, cur) => LANG === 'en' ? `${cur} ${num(n)}` : `${num(n)} ${cur === 'NOK' ? 'kr' : 'SEK'}`;
+const pct = (v, d=0) => Number(v).toLocaleString(LOC(), {maximumFractionDigits:d, minimumFractionDigits:d}) + (LANG === 'en' ? '%' : ' %');
+const fmtD = d => d ? d.toLocaleDateString(LOC(), {day:'numeric', month:'short', year:'numeric'}) : '–';
+const fmtDs = d => d ? d.toLocaleDateString(LOC(), {day:'numeric', month:'short'}) : '–';
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const parseIso = s => { if(!s) return null; const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const TODAY = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); })();
+const daysAgo = n => { const d = new Date(TODAY); d.setDate(d.getDate()-n); return d; };
+const daysBetween = (a, b) => Math.round((b - a) / 864e5);
+function toast(msg){ const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => t.hidden = true, 2600); }
+
+const SHELL = {
+  mainMenu:['Hovedmeny','Main menu'], brandSub:['Forklarbar kreditt og tidlig varsling','Explainable credit and early warning'],
+  grpProposal:['Løsningsforslag','Solution proposal'], grpDemo:['Konseptdemo','Concept demo'],
+  forslag:['Introduksjon','Introduction'], regelverk:['Regelverket','The rules'], losning:['Løsning og integrasjon','Solution and integration'], business:['Business case','Business case'], 'veien-videre':['Veien videre','Next steps'], om:['Om løsningsforslaget','About the proposal'],
+  soknader:['Kredittsøknader','Credit applications'], varsling:['Tidlig varsling','Early warning'], innsikt:['Innsikt og etterlevelse','Insights and compliance'],
+  sideFoot:['Konseptdemo. Lysvik Bank er en fiktiv bank, og alle kunder og saker er eksempeldata.','Concept demo. Lysvik Bank is a fictional bank, and all customers and cases are sample data.'],
+  reset:['Tilbakestill demodata','Reset demo data'], lang:['Språk','Language'], crumbNav:['Du er her','You are here']
+};
+const S = k => L(SHELL[k][0], SHELL[k][1]);
+function applyShell(){
+  document.documentElement.lang = LANG === 'en' ? 'en' : 'nb';
+  $$('[data-i18n]').forEach(el => el.textContent = S(el.dataset.i18n));
+  $$('[data-i18n-aria]').forEach(el => el.setAttribute('aria-label', S(el.dataset.i18nAria)));
+  $('#langSwitch').setAttribute('aria-label', S('lang'));
+  $$('#langSwitch button').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === LANG));
+  const cl = $('#custLogo'); if(cl && !cl.innerHTML) cl.innerHTML = lysvikLogo(true, 26);
+  if(cl) cl.title = L('Kunde: Lysvik Bank (fiktiv)','Customer: Lysvik Bank (fictional)');
+}
+
+// ---------- Logo for Lysvik Bank (fiktiv) ----------
+function lysvikLogo(onDark, h = 30){
+  const wave = onDark ? '#86D6D2' : '#0F6E74', txt = onDark ? '#FFFFFF' : 'var(--ink)';
+  return `<svg class="lysvik" height="${h}" viewBox="0 0 136 32" role="img" aria-label="Lysvik Bank"><circle cx="16" cy="13" r="6.5" fill="#F0AE3C"/><path d="M2.5 21.5 Q16 14 29.5 21.5" fill="none" stroke="${wave}" stroke-width="2.6" stroke-linecap="round"/><path d="M6.5 27 Q16 22 25.5 27" fill="none" stroke="${wave}" stroke-width="2.2" stroke-linecap="round" opacity=".7"/><text x="36" y="21.5" fill="${txt}" font-family="Manrope, 'Segoe UI', sans-serif"><tspan font-size="17" font-weight="800" letter-spacing="-.3">Lysvik</tspan><tspan dx="5" font-size="9.5" font-weight="700" letter-spacing="1.6">BANK</tspan></text></svg>`;
+}
+
+// ---------- Land og regler ----------
+// Lysvik Banks kredittpolicy er fiktiv. Regelhenvisningene er reelle (se «Regelverket»).
+const COUNTRY = {
+  NO:{ name:['Norge','Norway'], cur:'NOK', living:11500, child:3800, maxTerm:60 },
+  SE:{ name:['Sverige','Sweden'], cur:'SEK', living:12000, child:4000, maxTerm:null }
+};
+const cn = c => L(...COUNTRY[c].name);
+const POLICY = { tax:0.28, stress:3, maxDti:5, unsecuredMonthly:0.02, minMargin:2000 };
+const PRODUCT = { forbrukslan:{t:['Forbrukslån','Consumer loan'], rate:12.9}, kredittkort:{t:['Kredittkort','Credit card'], rate:19.9} };
+const prod = k => L(...PRODUCT[k].t);
+const pmt = (P, ratePct, n) => { const r = ratePct/100/12; return r === 0 ? P/n : P*r/(1-Math.pow(1+r,-n)); };
+
+// Kredittvurdering etter Lysvik Banks (fiktive) policy. Returnerer faktorer, utfall og forklaringsgrunnlag.
+function assess(a, over = {}){
+  const x = {...a, ...over};
+  const C = COUNTRY[x.country];
+  const net = x.income * (1 - POLICY.tax) / 12;
+  const living = x.adults * C.living + x.kids * C.child;
+  const unsecPay = x.unsecured * POLICY.unsecuredMonthly;
+  const term = x.product === 'kredittkort' ? 36 : x.term;
+  const newPay = pmt(x.amount, PRODUCT[x.product].rate + POLICY.stress, term);
+  const margin = net - x.housing - living - unsecPay - newPay;
+  const dti = (x.unsecured + x.mortgage + x.amount) / x.income;
+  const F = [];
+  F.push({ k:'remark', ok:!x.remark, hard:true, label:Lg('Betalingsanmerkninger','Payment remarks'), val: x.remark ? Lg('Registrert','Registered') : Lg('Ingen','None'), src:'bureau',
+    why: Lg('Lysvik Bank innvilger ikke usikret kreditt så lenge en betalingsanmerkning er registrert.','Lysvik Bank does not grant unsecured credit while a payment remark is registered.') });
+  F.push({ k:'margin', ok:margin >= 0, warn:margin >= 0 && margin < POLICY.minMargin, hard:true, label:Lg('Betjeningsevne med renteøkning','Ability to pay with a rate increase'), val: money(margin, C.cur) + L(' per mnd.',' per month'), src:'calc',
+    why: Lg(`Etter skatt, boutgifter, livsopphold og alle lån, med ${POLICY.stress} prosentpoeng høyere rente, må det være penger igjen hver måned.`, `After tax, housing, living costs and all loans, with the rate ${POLICY.stress} percentage points higher, money must be left over each month.`) });
+  F.push({ k:'dti', ok:dti <= POLICY.maxDti, hard:true, label:Lg('Samlet gjeld mot inntekt','Total debt to income'), val: (Math.round(dti*10)/10).toLocaleString(LOC()) + ' ×', src:'register',
+    why: Lg(`Samlet gjeld kan ikke være mer enn ${POLICY.maxDti} ganger brutto årsinntekt i Lysvik Banks policy.`, `Total debt may not exceed ${POLICY.maxDti} times gross annual income under Lysvik Bank's policy.`) });
+  F.push({ k:'job', ok:x.job === 'fast', warn:x.job !== 'fast', hard:false, label:Lg('Ansettelse','Employment'), val: L(...JOB[x.job]), src:'applicant',
+    why: Lg('Midlertidig ansettelse eller egen næring gir manuell vurdering, ikke avslag.','Temporary employment or self-employment leads to manual review, not rejection.') });
+  const fail = F.filter(f => f.hard && !f.ok);
+  const outcome = fail.length ? 'avslag' : F.some(f => f.warn) ? 'manuell' : 'innvilget';
+  return { F, fail, outcome, margin, dti, net, living, unsecPay, newPay, term, x };
+}
+const JOB = { fast:['Fast ansatt','Permanent'], midlertidig:['Midlertidig ansatt','Temporary'], selvstendig:['Selvstendig næringsdrivende','Self-employed'] };
+
+// «Hva måtte vært annerledes»: minste endring i beløp eller løpetid som gir innvilget.
+function counterfactual(a){
+  const r = assess(a);
+  if(r.outcome !== 'avslag') return null;
+  if(r.fail.some(f => f.k === 'remark')) return { kind:'remark' };
+  const out = [];
+  for(let amt = Math.floor(a.amount/10000)*10000; amt >= 10000; amt -= 10000){
+    const o = assess(a, {amount:amt}).outcome; if(o !== 'avslag'){ out.push({ kind:'amount', amount:amt, out:o }); break; }
+  }
+  if(a.product === 'forbrukslan'){
+    const mx = COUNTRY[a.country].maxTerm || 120;
+    for(const t of [72, 84, 96, 120]){ if(t > a.term && t <= mx){ const o = assess(a, {term:t}).outcome; if(o !== 'avslag'){ out.push({ kind:'term', term:t, out:o }); break; } } }
+  }
+  if(a.unsecured > 0){ const o = assess(a, {unsecured:0}).outcome; if(o !== 'avslag') out.push({ kind:'unsecured', out:o }); }
+  return out.length ? out : [{ kind:'none' }];
+}
+
+// Rettigheter og plikter ved avslag, per land. Status: 'law' = gjelder, 'policy' = bankens valg, 'coming' = kommer.
+function rights(a){
+  const auto = a.auto;
+  const se = new Date() < new Date(2026, 10, 20) ? 'from' : 'law';
+  if(a.country === 'SE') return [
+    { t:Lg('Begrunnelse for avslaget','Reason for the rejection'), s:se, src:Lg('Konsumentkreditlagen (2026:1011) 3 kap. 16 §','Consumer Credit Act (2026:1011) ch. 3 s. 16') },
+    { t:Lg('Hvilken database som er brukt','Which database was used'), s:se, src:Lg('Konsumentkreditlagen 3 kap. 16 §','Consumer Credit Act ch. 3 s. 16') },
+    { t:Lg('Forklaring, eget syn og ny vurdering av et menneske','Explanation, own view and review by a person'), s: auto ? se : 'na', src:Lg('Konsumentkreditlagen 3 kap. 15 § – når vurderingen er automatisert','Consumer Credit Act ch. 3 s. 15 – when the assessment is automated') },
+    { t:Lg('Henvisning til budsjett- og gjeldsrådgivning','Referral to budget and debt advice'), s:se, src:Lg('CCD2 art. 18(9), gjennomført i konsumentkreditlagen – kommunal budsjett- og gjeldsrådgivning','CCD2 Art. 18(9), implemented in the Consumer Credit Act – municipal budget and debt advice') }
+  ];
+  return [
+    { t:Lg('Begrunnelse for avslaget','Reason for the rejection'), s:'policy', src:Lg('Ikke lovpålagt i Norge i dag. Lysvik Bank gir begrunnelse som policy.','Not required by law in Norway today. Lysvik Bank gives reasons as a policy.') },
+    { t:Lg('Hvilken database som er brukt','Which database was used'), s:'law', src:Lg('Finansavtaleloven, ved avslag basert på databaseoppslag','Financial Contracts Act, when a rejection is based on a database search') },
+    { t:Lg('Ny vurdering av et menneske','Review by a person'), s: auto ? 'law' : 'na', src:Lg('GDPR art. 22 – når avgjørelsen er helautomatisert','GDPR Art. 22 – when the decision is fully automated') },
+    { t:Lg('Forklaring og ny vurdering etter CCD2','Explanation and review under CCD2'), s:'coming', src:Lg('CCD2 art. 18(8)–(9). Ikke tatt inn i EØS-avtalen ennå; dato ikke fastsatt.','CCD2 Art. 18(8)–(9). Not yet part of the EEA Agreement; no date set.') }
+  ];
+}
+const RSTAT = { law:['Lovkrav','Required by law','ok'], from:['Lovkrav fra 20.11.2026','Required from 20 Nov 2026','info'], policy:['Bankens valg','Bank policy','acc'], coming:['Kommer','Coming','info'], na:['Ikke aktuelt','Not applicable',''] };
+const rpill = s => `<span class="pill ${RSTAT[s][2]}">${L(RSTAT[s][0], RSTAT[s][1])}</span>`;
+
+const SRC = {
+  register:{ NO:Lg('Nasjonalt gjeldsregister (usikret gjeld) og søknaden (boliglån)','National debt register (unsecured debt) and the application (mortgage)'), SE:Lg('Kredittopplysningsbyrå (gjeld og inntekt)','Credit reference agency (debt and income)') },
+  bureau:{ NO:Lg('Kredittopplysningsbyrå (betalingsanmerkninger)','Credit reference agency (payment remarks)'), SE:Lg('Kredittopplysningsbyrå (betalingsanmerkninger)','Credit reference agency (payment remarks)') },
+  applicant:{ NO:Lg('Opplysninger fra søknaden','Information from the application'), SE:Lg('Opplysninger fra søknaden','Information from the application') },
+  calc:{ NO:Lg('Beregnet av Lysvik Bank','Calculated by Lysvik Bank'), SE:Lg('Beregnet av Lysvik Bank','Calculated by Lysvik Bank') }
+};
+
+// ---------- Eksempeldata ----------
+const APP_STATUS = {
+  innvilget:{t:['Innvilget','Approved'], c:'ok'}, avslatt:{t:['Avslått – forklaring sendt','Rejected – explanation sent'], c:'bad'},
+  manuell:{t:['Til manuell vurdering','Manual review'], c:'warn'}, 'ny-vurdering':{t:['Kunden ber om ny vurdering','Customer requests review'], c:'acc'},
+  'vurdert-innvilget':{t:['Ny vurdering: innvilget','Review: approved'], c:'ok'}, 'vurdert-avslatt':{t:['Ny vurdering: avslag står','Review: rejection upheld'], c:'bad'},
+  'manuell-innvilget':{t:['Innvilget etter manuell vurdering','Approved after manual review'], c:'ok'}, 'manuell-avslatt':{t:['Avslått etter manuell vurdering','Rejected after manual review'], c:'bad'}
+};
+const ast = k => L(...APP_STATUS[k].t);
+const NEEDS_HUMAN = new Set(['manuell','ny-vurdering']);
+
+function seedApps(){
+  const A = (o) => ({ adults:1, kids:0, mortgage:0, unsecured:0, remark:false, job:'fast', product:'forbrukslan', term:60, auto:true, log:[], ...o });
+  const list = [
+    A({ id:'S-2411', name:'Ingrid Solheim', country:'NO', d:2, amount:150000, income:520000, mortgage:2100000, unsecured:85000, housing:14500, status:'ny-vurdering',
+        request:{ d:1, text:Lg('Kredittkortgjelden på 85 000 kr er betalt ned i forrige uke. Jeg legger ved kvittering.','The credit card debt of NOK 85,000 was paid off last week. I attach the receipt.'), change:{unsecured:0}, changeLabel:Lg('Usikret gjeld oppgitt til 0 kr (dokumentert)','Unsecured debt stated as NOK 0 (documented)') } }),
+    A({ id:'S-2412', name:'Sara Lindqvist', country:'SE', d:3, amount:200000, income:570000, mortgage:1900000, unsecured:60000, housing:13800, kids:1, status:'ny-vurdering',
+        request:{ d:1, text:Lg('Jeg har fått ny fast stilling med høyere lønn fra 1. desember. Arbeidsavtale er vedlagt.','I have a new permanent job with a higher salary from 1 December. The contract is attached.'), change:{income:680000}, changeLabel:Lg('Ny årsinntekt 680 000 SEK (arbeidsavtale)','New annual income SEK 680,000 (employment contract)') } }),
+    A({ id:'S-2413', name:'Erik Lund', country:'NO', d:4, amount:60000, income:410000, unsecured:20000, housing:9800, remark:true, status:'avslatt' }),
+    A({ id:'S-2414', name:'Johan Berg', country:'SE', d:4, amount:80000, income:820000, mortgage:2400000, unsecured:30000, housing:15500, adults:2, status:'innvilget' }),
+    A({ id:'S-2415', name:'Kari Nilsen', country:'NO', d:5, amount:40000, product:'kredittkort', income:480000, mortgage:1500000, unsecured:15000, housing:11800, status:'innvilget' }),
+    A({ id:'S-2416', name:'Ola Haugen', country:'NO', d:5, amount:120000, income:560000, mortgage:1800000, unsecured:40000, housing:13200, job:'midlertidig', status:'manuell', auto:false }),
+    A({ id:'S-2417', name:'Emma Sjöberg', country:'SE', d:6, amount:350000, income:390000, mortgage:1700000, unsecured:120000, housing:12900, status:'avslatt' }),
+    A({ id:'S-2418', name:'Per Dahl', country:'NO', d:7, amount:90000, income:620000, mortgage:2600000, unsecured:60000, housing:16900, adults:2, kids:2, status:'vurdert-avslatt',
+        request:{ d:5, text:Lg('Jeg mener inntekten min er høyere enn det dere har lagt til grunn.','I believe my income is higher than what you used.'), change:{}, changeLabel:Lg('Ingen nye opplysninger','No new information') },
+        review:{ d:4, by:'Marte Aas', decision:'avslag', reason:Lg('Inntekten i søknaden stemmer med skattemeldingen. Med to barn og nytt lån er det ikke penger igjen hver måned. Kunden er henvist til Navs økonomiske rådgivning.','The income in the application matches the tax return. With two children and a new loan, no money is left each month. The customer has been referred to Nav\'s financial advice service.') } }),
+    A({ id:'S-2419', name:'Lina Ekström', country:'SE', d:8, amount:50000, product:'kredittkort', income:520000, unsecured:10000, housing:9900, status:'innvilget' }),
+    A({ id:'S-2420', name:'Aud Hansen', country:'NO', d:9, amount:250000, income:380000, mortgage:1650000, unsecured:150000, housing:12400, status:'avslatt' }),
+    A({ id:'S-2421', name:'Oskar Nyström', country:'SE', d:10, amount:100000, income:500000, mortgage:1600000, unsecured:50000, housing:12100, job:'selvstendig', status:'manuell-innvilget', auto:false,
+        review:{ d:8, by:'Jonas Wik', decision:'innvilget', reason:Lg('Regnskap for to år viser stabil inntekt. Innvilget på vanlige vilkår.','Accounts for two years show stable income. Approved on standard terms.') } }),
+    A({ id:'S-2422', name:'Marit Eide', country:'NO', d:11, amount:75000, income:495000, mortgage:2000000, unsecured:25000, housing:13600, status:'innvilget' })
+  ];
+  list.forEach(a => { a.date = iso(daysAgo(a.d)); if(a.request) a.request.date = iso(daysAgo(a.request.d)); if(a.review) a.review.date = iso(daysAgo(a.review.d));
+    a.log = [{ d:a.date, t:Lg('Søknad mottatt','Application received') }];
+    const r = assess(a);
+    a.log.push({ d:a.date, t: a.auto ? Lg(`Automatisk vurdering: ${r.outcome === 'avslag' ? 'avslag' : r.outcome === 'manuell' ? 'manuell vurdering' : 'innvilget'}`, `Automated assessment: ${r.outcome === 'avslag' ? 'rejected' : r.outcome === 'manuell' ? 'manual review' : 'approved'}`) : Lg('Sendt til manuell vurdering','Sent for manual review') });
+    if(r.outcome === 'avslag') a.log.push({ d:a.date, t:Lg('Forklaring sendt til kunden i nettbanken','Explanation sent to the customer in online banking') });
+    if(a.request) a.log.push({ d:a.request.date, t:Lg('Kunden ba om ny vurdering','The customer requested a review') });
+    if(a.review && !a.request) a.log.push({ d:a.review.date, t:Lg(`Manuell vurdering av ${a.review.by}: ${a.review.decision === 'innvilget' ? 'innvilget' : 'avslått'}`, `Manual review by ${a.review.by}: ${a.review.decision === 'innvilget' ? 'approved' : 'rejected'}`) });
+    else if(a.review) a.log.push({ d:a.review.date, t:Lg(`Ny vurdering av ${a.review.by}: ${a.review.decision === 'innvilget' ? 'innvilget' : 'avslag står'}`, `Review by ${a.review.by}: ${a.review.decision === 'innvilget' ? 'approved' : 'rejection upheld'}`) });
+  });
+  return list;
+}
+
+const STAGES = ['signal','kontaktet','tilbud','avtale','inkasso'];
+const STAGE_T = { signal:['Signal','Signal'], kontaktet:['Kontaktet','Contacted'], tilbud:['Tilbud gitt','Offer made'], avtale:['Avtale','Agreement'], inkasso:['Overlevert til inkassoselskap','Handed to collection agency'] };
+const stg = k => L(...STAGE_T[k]);
+function seedLoans(){
+  const B = o => ({ product:'forbrukslan', log:[], offer:null, ...o });
+  const list = [
+    B({ id:'L-3051', name:'Tor Moen', country:'NO', balance:142000, rate:12.9, months:44, late:18, missed6:2, self:false, newDebt:45000, stage:'signal', since:2 }),
+    B({ id:'L-3052', name:'Anna Holm', country:'SE', balance:96000, rate:13.4, months:30, late:9, missed6:1, self:true, newDebt:0, stage:'kontaktet', since:5 }),
+    B({ id:'L-3053', name:'Liv Brekke', country:'NO', balance:61000, rate:19.9, months:24, product:'kredittkort', late:34, missed6:3, self:false, newDebt:80000, stage:'tilbud', since:9,
+        offer:{ kind:'extend', extra:24, date:5 } }),
+    B({ id:'L-3054', name:'Magnus Strand', country:'NO', balance:210000, rate:11.9, months:58, late:5, missed6:0, self:false, newDebt:120000, stage:'signal', since:1 }),
+    B({ id:'L-3055', name:'Elin Forsberg', country:'SE', balance:74000, rate:12.9, months:20, late:22, missed6:2, self:false, newDebt:0, stage:'avtale', since:20,
+        offer:{ kind:'defer', extra:3, date:15 } }),
+    B({ id:'L-3056', name:'Bjørn Vik', country:'NO', balance:38000, rate:19.9, months:18, product:'kredittkort', late:63, missed6:4, self:false, newDebt:0, stage:'inkasso', since:40,
+        offer:{ kind:'extend', extra:12, date:30 } }),
+    B({ id:'L-3057', name:'Nora Lie', country:'NO', balance:118000, rate:12.4, months:50, late:0, missed6:0, self:true, newDebt:0, stage:'kontaktet', since:3 }),
+    B({ id:'L-3058', name:'Gustav Ek', country:'SE', balance:155000, rate:12.9, months:52, late:12, missed6:1, self:false, newDebt:30000, stage:'signal', since:2 })
+  ];
+  list.forEach(l => {
+    l.sinceDate = iso(daysAgo(l.since));
+    l.log = [{ d:l.sinceDate, t:Lg('Signal oppdaget','Signal detected') }];
+    if(STAGES.indexOf(l.stage) >= 1) l.log.push({ d:iso(daysAgo(Math.max(0, l.since-1))), t:Lg('Kunden kontaktet i nettbanken og på SMS','Customer contacted in online banking and by text message') });
+    if(l.offer){ l.offer.dateIso = iso(daysAgo(l.offer.date)); l.log.push({ d:l.offer.dateIso, t:Lg(`Tilbud gitt: ${offerName(l.offer, 'no')}. Henvist til gjeldsrådgivning.`, `Offer made: ${offerName(l.offer, 'en')}. Referred to debt advice.`) }); }
+    if(l.stage === 'avtale') l.log.push({ d:iso(daysAgo(l.offer.date - 3)), t:Lg('Kunden godtok tilbudet','The customer accepted the offer') });
+    if(l.stage === 'inkasso'){ l.log.push({ d:iso(daysAgo(3)), t:Lg('Kunden svarte ikke på tilbudet','The customer did not reply to the offer') }); if(l.country === 'NO') l.log.push({ d:iso(daysAgo(3)), t:Lg('Inkassobevilling kontrollert i Finanstilsynets register','Debt collection licence checked in the Financial Supervisory Authority register') }); l.log.push({ d:iso(daysAgo(3)), t:Lg('Overlevert til inkassoselskapet med dokumentasjon av tilbud og kontakt','Handed to the collection agency with documentation of the offer and contact') }); }
+  });
+  return list;
+}
+const OFFERS = {
+  defer:{ t:['Betalingsutsettelse','Payment deferral'], unit:['mnd.','months'], opts:[1,2,3] },
+  extend:{ t:['Lengre nedbetalingstid','Longer repayment period'], unit:['mnd.','months'], opts:[12,24,36] },
+  rate:{ t:['Midlertidig lavere rente','Temporarily lower interest'], unit:['prosentpoeng i 6 mnd.','percentage points for 6 months'], opts:[2,3,5] },
+  waive:{ t:['Delvis ettergivelse','Partial write-off'], unit:['% av saldo','% of balance'], opts:[5,10,20] }
+};
+function offerOpts(l, kind){ const O = OFFERS[kind].opts; const mx = COUNTRY[l.country].maxTerm; return kind === 'extend' && mx ? O.filter(v => l.months + v <= mx) : O; }
+function offerName(o, lang){ const O = OFFERS[o.kind]; const i = lang === 'en' ? 1 : 0; return `${O.t[i].toLowerCase()} (${o.extra} ${O.unit[i]})`; }
+function risk(l){ if(l.late >= 30 || l.missed6 >= 3 || (typeof employerSignal === 'function' && employerSignal(l))) return 'hoy'; if(l.late >= 10 || l.missed6 >= 2 || l.newDebt >= 50000 || l.self) return 'middels'; return 'lav'; }
+const RISK_T = { hoy:['Høy','High','bad'], middels:['Middels','Medium','warn'], lav:['Lav','Low','info'] };
+const rpillR = k => `<span class="pill ${RISK_T[k][2]}"><span class="dot"></span>${L(RISK_T[k][0], RISK_T[k][1])}</span>`;
+function signals(l){
+  const C = COUNTRY[l.country], out = [];
+  const es = typeof employerSignal === 'function' ? employerSignal(l) : null; if(es) out.push(es);
+  if(l.stage === 'avtale' && l.offer) out.push(Lg(`Avtale inngått: ${offerName(l.offer, 'no')}`, `Agreement made: ${offerName(l.offer, 'en')}`));
+  if(l.late > 0) out.push(Lg(`Siste avdrag ${l.late} dager forsinket`, `Latest instalment ${l.late} days late`));
+  if(l.missed6 > 0) out.push(Lg(`${l.missed6} ${l.missed6 === 1 ? 'forfall' : 'forfall'} betalt for sent siste 6 mnd.`, `${l.missed6} ${l.missed6 === 1 ? 'instalment' : 'instalments'} paid late in the last 6 months`));
+  if(l.newDebt > 0) out.push(Lg(`Ny usikret gjeld ${money(l.newDebt, C.cur)} siste 3 mnd. (gjeldsopplysning)`, `New unsecured debt ${money(l.newDebt, C.cur)} in the last 3 months (debt information)`));
+  if(l.self) out.push(Lg('Kunden har selv sagt fra om betalingsproblemer','The customer has reported payment problems'));
+  return out;
+}
+const monthly = l => pmt(l.balance, l.rate, l.months);
+function offerEffect(l, o){
+  if(!o) return null;
+  if(o.kind === 'extend') return { now:monthly(l), after:pmt(l.balance, l.rate, l.months + o.extra), note:Lg(`Løpetid ${l.months} → ${l.months + o.extra} mnd. Høyere samlet rentekostnad.`, `Term ${l.months} → ${l.months + o.extra} months. Higher total interest cost.`) };
+  if(o.kind === 'defer') return { now:monthly(l), after:0, note:Lg(`Ingen avdrag i ${o.extra} mnd. Renten løper, og avdraget etterpå blir ${money(pmt(l.balance * Math.pow(1 + l.rate/1200, o.extra), l.rate, l.months), COUNTRY[l.country].cur)}.`, `No instalments for ${o.extra} months. Interest accrues, and the instalment afterwards will be ${money(pmt(l.balance * Math.pow(1 + l.rate/1200, o.extra), l.rate, l.months), COUNTRY[l.country].cur)}.`) };
+  if(o.kind === 'rate') return { now:monthly(l), after:pmt(l.balance, Math.max(0, l.rate - o.extra), l.months), note:Lg('Gjelder i 6 mnd. Deretter ordinær rente.','Applies for 6 months. Standard rate afterwards.') };
+  if(o.kind === 'waive') return { now:monthly(l), after:pmt(l.balance * (1 - o.extra/100), l.rate, l.months), note:Lg(`Saldo redusert med ${money(l.balance * o.extra/100, COUNTRY[l.country].cur)}.`, `Balance reduced by ${money(l.balance * o.extra/100, COUNTRY[l.country].cur)}.`) };
+}
+
+// ---------- Lagring (bare i nettleseren) ----------
+let APPS = [], LOANS = [];
+function load(){
+  // Lagrede data brukes bare hvis de har riktig form; ellers brukes eksempeldataene.
+  const apps = store.get('ci_apps2', null), loans = store.get('ci_loans2', null);
+  APPS = validApps(apps) ? apps : seedApps();
+  LOANS = validLoans(loans) ? loans : seedLoans();
+}
+function validApps(v){
+  const fin = x => Number.isFinite(x), obj = x => x && typeof x === 'object' && !Array.isArray(x);
+  return Array.isArray(v) && v.length > 0 && v.every(a => obj(a) && typeof a.id === 'string' && typeof a.name === 'string' && COUNTRY[a.country] && PRODUCT[a.product] && JOB[a.job] && APP_STATUS[a.status]
+    && ['amount','income','mortgage','unsecured','housing','adults','kids','term','d'].every(k => fin(a[k])) && Array.isArray(a.log));
+}
+function validLoans(v){
+  const fin = x => Number.isFinite(x), obj = x => x && typeof x === 'object' && !Array.isArray(x);
+  return Array.isArray(v) && v.length > 0 && v.every(l => obj(l) && typeof l.id === 'string' && typeof l.name === 'string' && COUNTRY[l.country] && PRODUCT[l.product] && STAGE_T[l.stage]
+    && ['balance','rate','months','late','missed6','newDebt','since'].every(k => fin(l[k])) && Array.isArray(l.log));
+}
+const saveApps = () => store.set('ci_apps2', APPS);
+const saveLoans = () => store.set('ci_loans2', LOANS);
+const appById = id => APPS.find(a => a.id === id);
+const loanById = id => LOANS.find(l => l.id === id);
+
+// ---------- Åpne API-er ----------
+// Demoen viser hvordan Klarsyn kobles til åpne, offentlige API-er. Endepunktene er de ekte,
+// men svarene er simulert med fiktive data, så demoen virker uten nett og uten å vise reelle tall.
+const OPEN_API = {
+  nb:{ doc:Lg('https://www.norges-bank.no/tema/statistikk/apne-data/','https://www.norges-bank.no/en/topics/statistics/open-data/'), name:'Norges Bank', what:Lg('Styringsrente','Policy rate'), url:'https://data.norges-bank.no/api/data/IR/B.KPRA.SD.R',
+       used:Lg('Vises som rentenivå ved siden av stresstesten, og ved tilbud om lavere rente (Norge)','Shown as the rate level next to the stress test, and for lower-rate offers (Norway)') },
+  rb:{ doc:Lg('https://www.riksbank.se/sv/statistik/rantor-och-valutakurser/hamta-rantor-och-valutakurser-via-api/fragor-och-svar-om-apiet-for-rantor-och-valutakurser/','https://www.riksbank.se/en-gb/statistics/interest-rates-and-exchange-rates/retrieving-interest-rates-and-exchange-rates-via-api/faq--the-api-for-interest-rates-and-exchange-rates/'), name:'Sveriges Riksbank', what:Lg('Styringsrente (SWEA)','Policy rate (SWEA)'), url:'https://api.riksbank.se/swea/v1/Observations/Latest/SECBREPOEFF',
+       used:Lg('Det samme for Sverige','The same for Sweden') },
+  ft:{ doc:Lg('https://finanstilsynet.no/analyser-og-statistikk/api-for-apne-data','https://finanstilsynet.no/analyser-og-statistikk/api-for-apne-data'), name:'Finanstilsynet', what:Lg('Virksomhetsregisteret','Entity register'), url:'https://api.finanstilsynet.no/registry/v2/legal-entities/filter?licenceTypes=FREMINKASO',
+       used:Lg('Kontroll av at inkassoselskapet har bevilling før en sak overleveres','Check that the collection agency holds a licence before a case is handed over') },
+  ssb:{ doc:Lg('https://www.ssb.no/api/pxwebapi','https://www.ssb.no/en/omssb/tjenester-og-verktoy/api/px-api'), name:'SSB Statistikkbanken', what:'PxWebApi v2', url:'https://data.ssb.no/api/pxwebapi/v2/tables/{14710|13760|07879|12128}/data',
+       used:Lg('Samfunnsøkonomisk bakgrunn under «Innsikt og etterlevelse»','Economic background in «Insights and compliance»') },
+  brreg:{ doc:Lg('https://data.brreg.no/enhetsregisteret/api/dokumentasjon/no/index.html','https://data.brreg.no/enhetsregisteret/api/dokumentasjon/en/index.html'), name:'Brønnøysundregistrene', what:Lg('Enhetsregisteret','Central Coordinating Register'), url:'https://data.brreg.no/enhetsregisteret/api/enheter/{orgnr}',
+       used:Lg('Sjekk av arbeidsgiveren i søknaden, og tidlig signal hvis kundens arbeidsgiver går konkurs','Check of the employer in the application, and an early signal if the customer\'s employer goes bankrupt') }
+};
+
+// Fiktive svar. Tallene er oppdiktet og skal ikke leses som dagens verdier.
+const API_DATA = {
+  rate:{ NO:{ api:'nb', v:4.25 }, SE:{ api:'rb', v:2.0 } },
+  agency:{
+    NO:{ name:'Fjordvik Inkasso AS', orgnr:'900 000 101', licence:'FREMINKASO', ok:true },
+    SE:{ name:'Fjordvik Inkasso AB', ok:null }
+  },
+  ssb:[
+    { t:Lg('Konsumprisindeks, endring siste 12 mnd.','Consumer price index, 12-month change'), v:2.9, u:'pct', tab:'14710' },
+    { t:Lg('Arbeidsledighet (AKU)','Unemployment rate (LFS)'), v:4.2, u:'pct', tab:'13760' },
+    { t:Lg('Husholdningenes gjeld i prosent av inntekt','Household debt as a share of income'), v:238, u:'pct0', tab:'07879' },
+    { t:Lg('Andel med økonomiske vansker, laveste inntektsgruppe','Share with financial difficulties, lowest income group'), v:27, u:'pct0', tab:'12128' }
+  ],
+  // Arbeidsgivere for norske søknader og lån (fiktive foretak og org.nr.)
+  employer:{
+    'S-2411':{ name:'Brattli Regnskap AS', orgnr:'900 000 202', st:'aktiv' },
+    'S-2413':{ name:'Sandvoll Bygg AS', orgnr:'900 000 303', st:'aktiv' },
+    'S-2415':{ name:'Kvitfjell Skole', orgnr:'900 000 404', st:'aktiv' },
+    'S-2416':{ name:'Nordhamn Verft AS', orgnr:'900 000 505', st:'avvikling' },
+    'S-2418':{ name:'Helland Transport AS', orgnr:'900 000 606', st:'aktiv' },
+    'S-2420':{ name:'Lauvås Handel AS', orgnr:'900 000 707', st:'aktiv' },
+    'S-2422':{ name:'Østmo Helse AS', orgnr:'900 000 808', st:'aktiv' },
+    'L-3054':{ name:'Grønnli Interiør AS', orgnr:'900 000 909', st:'konkurs', d:6 }
+  }
+};
+const EMP_ST = { aktiv:['Aktiv','Active','ok'], avvikling:['Under avvikling','Being wound up','warn'], konkurs:['Konkurs','Bankrupt','bad'] };
+const apiName = k => OPEN_API[k].name;
+const apiTag = k => `<span class="apisrc" title="${esc(OPEN_API[k].url)}"><span class="apidot"></span>${L('API','API')}: ${esc(apiName(k))} · ${L('simulert, fiktive data','simulated, fictional data')}</span>`;
+const policyRate = c => API_DATA.rate[c];
+const employer = id => API_DATA.employer[id] || null;
+
+// Panel med oppslagene for en søknad
+function apiPanelApp(a){
+  const r = policyRate(a.country), e = a.country === 'NO' ? employer(a.id) : null;
+  const empRow = a.country === 'NO'
+    ? (e ? `<li><span>${L('Arbeidsgiver','Employer')}: ${esc(e.name)}<small class="mono">${L('Org.nr. (fiktivt)','Org. no. (fictional)')} ${e.orgnr}</small></span><span class="pill ${EMP_ST[e.st][2]}">${L(EMP_ST[e.st][0], EMP_ST[e.st][1])}</span><small>${apiTag('brreg')}</small></li>` : '')
+    : `<li><span>${L('Arbeidsgiver','Employer')}</span><span class="pill">${L('Ikke koblet','Not connected')}</span><small>${L('Det svenske foretaksregisteret (Bolagsverket) er ikke koblet i demoen.','The Swedish companies register (Bolagsverket) is not connected in the demo.')}</small></li>`;
+  const warn = e && e.st !== 'aktiv' ? `<div class="note warn" style="margin-top:10px"><b>${L('Til saksbehandler','For the case handler')}</b><span>${L(`Arbeidsgiveren er registrert som «${EMP_ST[e.st][0].toLowerCase()}». Det gir ikke avslag alene, men bør tas med i den manuelle vurderingen.`, `The employer is registered as «${EMP_ST[e.st][1].toLowerCase()}». This does not cause a rejection on its own, but should be part of the manual review.`)}</span></div>` : '';
+  return `<section class="panel"><div class="panel-h"><h3>${L('Oppslag i åpne registre','Open register look-ups')}</h3></div>
+    <ul class="rights">
+      <li><span>${L('Styringsrente','Policy rate')} (${cn(a.country)})</span><b class="num">${pct(r.v, 2)}</b><small>${L(`Stresstesten legger ${POLICY.stress} prosentpoeng til lånerenten.`, `The stress test adds ${POLICY.stress} percentage points to the loan rate.`)} ${apiTag(r.api)}</small></li>
+      ${empRow}
+    </ul>${warn}</section>`;
+}
+
+// Bevillingssjekk før overlevering til inkasso
+function agencyCheck(l){
+  const g = API_DATA.agency[l.country];
+  if(l.country === 'NO') return `<div class="note ${g.ok ? 'ok' : 'warn'}"><b>${g.ok ? L('Bevilling bekreftet','Licence confirmed') : L('Fant ikke bevilling','No licence found')}</b><span>${esc(g.name)} (${L('fiktivt','fictional')}) ${L('har inkassobevilling','holds a debt collection licence')} (<span class="mono">${g.licence}</span>). ${apiTag('ft')}</span></div>`;
+  return `<div class="note"><b>${L('Bevilling','Licence')}</b><span>${L(`Svensk inkassotillatelse for ${esc(g.name)} (fiktivt) gis av Integritetsskyddsmyndigheten (IMY). Ikke koblet i demoen.`, `The Swedish debt collection permit for ${esc(g.name)} (fictional) is issued by the Swedish Authority for Privacy Protection (IMY). Not connected in the demo.`)}</span></div>`;
+}
+
+// Signal fra Enhetsregisteret for lån
+function employerSignal(l){
+  const e = l.country === 'NO' ? employer(l.id) : null;
+  if(!e || e.st === 'aktiv') return null;
+  return Lg(`Arbeidsgiveren ${e.name} er registrert som ${EMP_ST[e.st][0].toLowerCase()} for ${e.d || 0} dager siden (Enhetsregisteret)`, `The employer ${e.name} was registered as ${EMP_ST[e.st][1].toLowerCase()} ${e.d || 0} days ago (Central Coordinating Register)`);
+}
+
+// ---------- Ruting ----------
+const ROUTES = { forslag:vForslag, regelverk:vRegelverk, losning:vLosning, business:vBusiness, 'veien-videre':vVeien, om:vOm, soknader:vSoknader, varsling:vVarsling, innsikt:vInnsikt };
+const PROP = ['forslag','regelverk','losning','business','veien-videre','om'];
+const AFTER = {};
+function render(){
+  applyShell();
+  const h = (location.hash || '#forslag').slice(1);
+  const root = 'Klarsyn › ';
+  let key = h, html;
+  if(h.startsWith('soknad-') && appById(h.slice(7))){ key = 'soknader'; html = vSoknad(appById(h.slice(7))); $('#crumb').innerHTML = `${root}${S('grpDemo')} › ${S('soknader')} › <b>${esc(h.slice(7))}</b>`; }
+  else if(h.startsWith('lan-') && loanById(h.slice(4))){ key = 'varsling'; html = vLan(loanById(h.slice(4))); $('#crumb').innerHTML = `${root}${S('grpDemo')} › ${S('varsling')} › <b>${esc(h.slice(4))}</b>`; }
+  else { if(!ROUTES[key]) key = 'forslag'; html = ROUTES[key]();
+    $('#crumb').innerHTML = `${root}${PROP.includes(key) ? S('grpProposal') : S('grpDemo')} › <b>${S(key)}</b>`; }
+  const v = $('#view'); v.className = 'content view' + (PROP.includes(key) ? ' narrow' : ''); v.innerHTML = html;
+  $$('.nav a').forEach(a => a.setAttribute('aria-current', a.dataset.v === key ? 'page' : 'false'));
+  const grp = PROP.includes(key) ? 'prop' : 'demo'; $('.app').dataset.group = grp;
+  $$('.groups a').forEach(g => g.setAttribute('aria-current', g.dataset.g === grp ? 'true' : 'false'));
+  $('#cntReview').textContent = APPS.filter(a => NEEDS_HUMAN.has(a.status)).length;
+  $('#cntWarn').textContent = LOANS.filter(l => !['avtale','inkasso'].includes(l.stage)).length;
+  $$('.tbl-wrap, .arch', v).forEach(el => { el.tabIndex = 0; if(!el.hasAttribute('aria-label')) el.setAttribute('role','group'); });
+  (AFTER[h.startsWith('soknad-') ? 'soknad' : h.startsWith('lan-') ? 'lan' : key] || (()=>{}))(h);
+  if(render._last !== h){ window.scrollTo(0,0); render._last = h; }
+}
+const sampleBanner = () => `<div class="sample"><b>${L('Eksempeldata','Sample data')}</b><span>${L('Slik kan det se ut etter noen måneders bruk. Lysvik Bank bruker ikke løsningen i dag, og alle kunder og saker er oppdiktet.','This is how it could look after a few months of use. Lysvik Bank does not use the solution today, and all customers and cases are made up.')}</span></div>`;
+const daysTo = d => daysBetween(TODAY, d);
+const D_CCD2 = new Date(2026, 10, 20), D_AIACT = new Date(2027, 11, 2);
+
+// ---------- Introduksjon ----------
+function vForslag(){
+  const needs = [
+    { k:'B1', h:Lg('Forklare avslag så kunden forstår dem','Explain rejections so the customer understands them'), p:Lg('Kunden får de viktigste årsakene i klart språk, hvilke opplysninger som er brukt, og hva som måtte vært annerledes.','The customer gets the main reasons in plain language, which information was used and what would have had to be different.'), a:'#soknad-S-2411', l:Lg('Se en forklaring','See an explanation') },
+    { k:'B2', h:Lg('La kunden be om ny vurdering','Let the customer request a review'), p:Lg('Kunden kan legge til opplysninger og si sin mening. En saksbehandler vurderer saken på nytt og begrunner utfallet.','The customer can add information and give their view. A case handler reviews the case and gives reasons for the outcome.'), a:'#soknader', l:Lg('Se køen','See the queue') },
+    { k:'B3', h:Lg('Hjelpe kunder med betalingsproblemer tidlig','Help customers with payment problems early'), p:Lg('Signaler i bankens egne data gjør at kunden blir kontaktet og får et tilbud før saken overleveres til et inkassoselskap.','Signals in the bank\'s own data mean the customer is contacted and gets an offer before the case is handed to a collection agency.'), a:'#varsling', l:Lg('Se tidlig varsling','See early warning') },
+    { k:'B4', h:Lg('Følge reglene i hvert land','Follow the rules in each country'), p:Lg('Én løsning for Norge og Sverige som viser hvilke krav som gjelder, og dokumenterer hver beslutning.','One solution for Norway and Sweden that shows which requirements apply and documents every decision.'), a:'#innsikt', l:Lg('Se etterlevelse','See compliance') }
+  ];
+  return `<div class="stack-l">
+    <div class="hero top">
+      <div class="stack">
+        <div class="eyebrow">${L('Løsningsforslag for Lysvik Bank','Solution proposal for Lysvik Bank')}</div>
+        <h1>${L('Forklarbare kredittbeslutninger og tidlig hjelp ved betalingsproblemer','Explainable credit decisions and early help with payment problems')}</h1>
+        <p class="lede">${L('Lysvik Bank låner ut til forbrukere i Norge og Sverige. Fra 20. november 2026 gjelder nye krav i Sverige til hvordan banken forklarer avslag, lar et menneske vurdere saken på nytt og hjelper kunder i økonomiske vansker. Norge ventes å følge når direktivet tas inn i EØS-avtalen. Klarsyn er et lag oppå bankens utlånssystemer som dekker kravene, uten å bytte kredittmodell. Inkasso er satt bort til et eksternt inkassoselskap, og løsningen dekker tiden før saken overleveres.','Lysvik Bank lends to consumers in Norway and Sweden. From 20 November 2026, new rules apply in Sweden on how the bank explains rejections, lets a person review the case and helps customers in financial difficulty. Norway is expected to follow when the directive is incorporated into the EEA Agreement. Klarsyn is a layer on top of the bank\'s lending systems that meets these requirements without replacing the credit model. Debt collection is outsourced to an external collection agency, and the solution covers the period before a case is handed over.')}</p>
+      </div>
+      <div class="metabox">${lysvikLogo(false, 32)}<dl class="meta">
+        <dt>${L('Kunde','Customer')}</dt><dd>Lysvik Bank (${L('fiktiv','fictional')})</dd>
+        <dt>${L('Leverandør','Vendor')}</dt><dd>Kystlys Software (${L('fiktiv','fictional')})</dd>
+        <dt>${L('Marked','Markets')}</dt><dd>${L('Norge og Sverige','Norway and Sweden')}</dd>
+        <dt>${L('Produkter','Products')}</dt><dd>${L('Forbrukslån og kredittkort','Consumer loans and credit cards')}</dd>
+        <dt>Status</dt><dd>${L('Konseptdemo','Concept demo')}</dd>
+      </dl></div>
+    </div>
+    <section class="stack"><h2>${L('Behovene','The needs')}</h2>
+      <div class="needs">${needs.map(n => `<div class="need"><span class="k">${n.k}</span><h3>${tx(n.h)}</h3><p>${tx(n.p)}</p><a href="${n.a}">${tx(n.l)} →</a></div>`).join('')}</div>
+    </section>
+    <section class="stack"><h2>${L('Hvorfor nå','Why now')}</h2>
+      <div class="timeline">
+        <div class="t on"><span class="d">20.11.2026</span><b>${L('CCD2 i Sverige, Danmark og Finland','CCD2 in Sweden, Denmark and Finland')}</b><span class="muted">${L(`Nye regler for kredittvurdering, avslag og betalingsproblemer. ${daysTo(D_CCD2) > 0 ? `Om ${daysTo(D_CCD2)} dager.` : 'Gjelder nå.'}`, `New rules on creditworthiness, rejections and payment problems. ${daysTo(D_CCD2) > 0 ? `In ${daysTo(D_CCD2)} days.` : 'In force now.'}`)}</span></div>
+        <div class="t later"><span class="d">${L('Dato ikke fastsatt','No date set')}</span><b>${L('CCD2 i Norge','CCD2 in Norway')}</b><span class="muted">${L('Ikke tatt inn i EØS-avtalen ennå. Justisdepartementet arbeider med et høringsnotat.','Not yet part of the EEA Agreement. The Ministry of Justice is preparing a consultation paper.')}</span></div>
+        <div class="t"><span class="d">02.12.2027</span><b>${L('AI Act: kredittscoring er høyrisiko','AI Act: credit scoring is high-risk')}</b><span class="muted">${L('Krav om menneskelig tilsyn, logg, konsekvensvurdering og forklaring i EU.','Requirements for human oversight, logs, impact assessment and explanation in the EU.')}</span></div>
+      </div>
+      <p class="muted" style="font-size:13px">${L('GDPR artikkel 22 om automatiserte avgjørelser gjelder allerede i begge land.','GDPR Article 22 on automated decisions already applies in both countries.')}</p>
+    </section>
+  </div>`;
+}
+
+// ---------- Regelverket ----------
+function vRegelverk(){
+  const src = [
+    [L('CCD2, direktiv (EU) 2023/2225','CCD2, Directive (EU) 2023/2225'), 'https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=LEGISSUM:4707402'],
+    [L('Sverige: konsumentkreditlag (2026:1011)','Sweden: Consumer Credit Act (2026:1011)'), 'https://data.riksdagen.se/dokument/sfs-2026-1011.html'],
+    [L('Danmark: lov nr. 1322 af 20.11.2025','Denmark: Act no. 1322 of 20.11.2025'), 'https://www.retsinformation.dk/eli/lta/2025/1322/pdf'],
+    [L('Finland: lov 31/2026','Finland: Act 31/2026'), 'https://www.edilex.fi/saadoskokoelma/20260031.pdf'],
+    [L('Norge: Justisministerens brev 30.4.2026 om CCD2','Norway: Minister of Justice letter 30.4.2026 on CCD2'), 'https://www.stortinget.no/globalassets/pdf/innstillinger/stortinget/2025-2026/inns-202526-332s-vedlegg.pdf'],
+    [L('AI Act: Digital Omnibus trer i kraft','AI Act: Digital Omnibus enters into force'), 'https://digital-strategy.ec.europa.eu/en/news/ai-omnibus-enters-force'],
+    [L('EU-domstolen: Dun & Bradstreet Austria, C‑203/22','EU Court of Justice: Dun & Bradstreet Austria, C‑203/22'), 'https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:62022CJ0203'],
+    [L('EU-domstolen: SCHUFA, C‑634/21','EU Court of Justice: SCHUFA, C‑634/21'), 'https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:62021CJ0634'],
+    [L('Datatilsynet: rettigheter ved automatiserte avgjørelser','Norwegian Data Protection Authority: rights in automated decisions'), 'https://www.datatilsynet.no/rettigheter-og-plikter/den-registrertes-rettigheter/rettar-ved-automatiserte-avgjerder/']
+  ];
+  const rows = [
+    [Lg('Forklaring, eget syn og ny vurdering av et menneske, på forespørsel, når vurderingen er automatisert','Explanation, own view and review by a person, on request, when the assessment is automated'), 'CCD2 art. 18(8)', Lg('3 kap. 15 §','ch. 3 s. 15'), Lg('GDPR art. 22: menneskelig vurdering ved helautomatisert avgjørelse','GDPR Art. 22: human review of fully automated decisions')],
+    [Lg('Varsle avslag uten opphold, opplyse om automatisert behandling, henvise til gjeldsrådgivning','Notify rejection without delay, disclose automated processing, refer to debt advice'), 'CCD2 art. 18(9)', Lg('Ja','Yes'), Lg('Delvis: opplysning om databaseoppslag (finansavtaleloven) og om automatisert avgjørelse (GDPR). Ingen plikt til å henvise til gjeldsrådgivning.','Partly: disclosure of database searches (Financial Contracts Act) and of automated decisions (GDPR). No duty to refer to debt advice.')],
+    [Lg('Begrunnelse for avslag','Reason for rejection'), Lg('Ikke krav i direktivet','Not required by the directive'), Lg('3 kap. 16 § – alltid','ch. 3 s. 16 – always'), Lg('Nei','No')],
+    [Lg('Opplyse hvilken database avslaget bygger på','Disclose the database a rejection is based on'), 'CCD2 art. 19(6)', Lg('3 kap. 16 §','ch. 3 s. 16'), Lg('Ja, finansavtaleloven','Yes, Financial Contracts Act')],
+    [Lg('Ikke bruke særlige kategorier personopplysninger eller sosiale nettverk','Do not use special categories of personal data or social networks'), 'CCD2 art. 18(3)', Lg('Ja','Yes'), Lg('GDPR art. 9','GDPR Art. 9')],
+    [Lg('Rutiner for å oppdage kunder i økonomiske vansker tidlig','Procedures to detect customers in financial difficulty early'), 'CCD2 art. 36(2)', Lg('6 kap. 11 §','ch. 6 s. 11'), Lg('Ingen tilsvarende plikt','No equivalent duty')],
+    [Lg('Rimelig imøtekommenhet før tvangsinndrivelse, der det er hensiktsmessig','Reasonable forbearance before enforcement, where appropriate'), 'CCD2 art. 35', Lg('6 kap. 12 §','ch. 6 s. 12'), Lg('Ingen plikt. Ny inkassolov (ikke i kraft) har regler om tilpasset inndriving','No duty. New Debt Collection Act (not in force) has rules on adapted collection')]
+  ];
+  return `<div class="stack-l">
+    <div class="stack"><div class="eyebrow">${S('grpProposal')}</div><h1>${S('regelverk')}</h1>
+      <p class="lede">${L('Kravene i det nye forbrukerkredittdirektivet (CCD2) gjelder i Sverige fra 20. november 2026. I Norge gjelder i dag bare deler av dem, gjennom GDPR og finansavtaleloven. Løsningen viser hvilke regler som gjelder for hver søknad og hvert lån.','The requirements of the new Consumer Credit Directive (CCD2) apply in Sweden from 20 November 2026. In Norway only parts of them apply today, through the GDPR and the Financial Contracts Act. The solution shows which rules apply to each application and each loan.')}</p></div>
+    <section class="stack"><h2>${L('Kravene per land','Requirements by country')}</h2>
+      <div class="tbl-wrap"><table><thead><tr><th>${L('Krav','Requirement')}</th><th>${L('Direktivet','Directive')}</th><th>${L('Sverige (2026:1011)','Sweden (2026:1011)')}</th><th>${L('Norge i dag','Norway today')}</th></tr></thead><tbody>
+        ${rows.map(r => `<tr><td>${tx(r[0])}</td><td class="mono">${tx(r[1])}</td><td>${tx(r[2])}</td><td>${tx(r[3])}</td></tr>`).join('')}
+      </tbody></table></div>
+      <p class="muted" style="font-size:13px">${L('Danmark (lov nr. 1322 af 20.11.2025) og Finland (lov 31/2026) har også gjennomført direktivet fra 20. november 2026. Boliglån er utenfor CCD2.','Denmark (Act no. 1322 of 20.11.2025) and Finland (Act 31/2026) have also implemented the directive from 20 November 2026. Mortgages are outside CCD2.')}</p>
+    </section>
+    <section class="grid2">
+      <div class="panel"><h3>${L('Hva en god forklaring inneholder','What a good explanation contains')}</h3><div class="prose" style="font-size:14px">
+        <p>${L('EU-domstolen har slått fast at kunden skal få vite hvilke prinsipper som faktisk ble brukt, ikke selve formelen. Det kan være nok å vise hvordan andre opplysninger ville gitt et annet resultat (Dun & Bradstreet Austria, C‑203/22, 2025).','The EU Court of Justice has held that the customer must be told which principles were actually applied, not the formula itself. It may be enough to show how different information would have led to a different result (Dun & Bradstreet Austria, C‑203/22, 2025).')}</p>
+        <p>${L('En kredittscore kan i seg selv være en automatisert avgjørelse når långiver legger avgjørende vekt på den (SCHUFA, C‑634/21, 2023).','A credit score can in itself be an automated decision when the lender relies on it decisively (SCHUFA, C‑634/21, 2023).')}</p>
+        <p>${L('Derfor viser Klarsyn årsakene, datakildene og «hva som måtte vært annerledes» for hver søknad.','That is why Klarsyn shows the reasons, the data sources and «what would have had to be different» for each application.')}</p></div></div>
+      <div class="panel"><h3>${L('AI Act: kredittscoring er høyrisiko','AI Act: credit scoring is high-risk')}</h3><div class="prose" style="font-size:14px">
+        <p>${L('Systemer som vurderer kredittverdigheten til personer er høyrisiko (vedlegg III punkt 5(b)), med unntak for svindeldeteksjon. Kravene gjelder fra 2. desember 2027 etter forordning (EU) 2026/1744.','Systems that assess the creditworthiness of persons are high-risk (Annex III point 5(b)), except for fraud detection. The requirements apply from 2 December 2027 under Regulation (EU) 2026/1744.')}</p>
+        <p>${L('En bank som bruker slike systemer må blant annet sikre menneskelig tilsyn (art. 14 og 26), gjøre en konsekvensvurdering for grunnleggende rettigheter (art. 27) og kunne forklare beslutninger (art. 86).','A bank that uses such systems must, among other things, ensure human oversight (Art. 14 and 26), carry out a fundamental rights impact assessment (Art. 27) and be able to explain decisions (Art. 86).')}</p>
+        <p>${L('Kravene gjelder hvis bankens kredittmodell er et AI-system etter art. 3(1). En enkel regelbasert modell kan falle utenfor, så det må vurderes for hver modell.','The requirements apply if the bank\'s credit model is an AI system under Art. 3(1). A simple rule-based model may fall outside, so this must be assessed for each model.')}</p>
+        <p>${L('I Norge er AI Act ikke tatt inn i EØS-avtalen ennå.','In Norway the AI Act is not yet part of the EEA Agreement.')}</p></div></div>
+    </section>
+    <section class="panel"><h3>${L('Kilder','Sources')}</h3><ul class="sources" style="margin:0; padding-left:20px">${src.map(s => `<li><a href="${s[1]}" target="_blank" rel="noopener">${esc(s[0])}</a></li>`).join('')}</ul></section>
+    <div class="note"><b>${L('Merk','Note')}</b><span>${L('Status per 9. november 2026. Oversikten er ikke juridisk rådgivning.','Status as of 9 November 2026. This overview is not legal advice.')}</span></div>
+  </div>`;
+}
+
+// ---------- Løsning og integrasjon ----------
+function vLosning(){
+  const mods = [
+    [Lg('Forklaring ved avslag','Explanation of rejections'), Lg('Årsaker i klart språk, datakilder, «hva måtte vært annerledes» og kundens rettigheter, tilpasset landet.','Reasons in plain language, data sources, «what would have had to be different» and the customer\'s rights, adapted to the country.')],
+    [Lg('Ny vurdering på forespørsel','Review on request'), Lg('Kunden legger til opplysninger. Saksbehandler ser hele grunnlaget, kan overstyre og må begrunne utfallet.','The customer adds information. The case handler sees the full basis, can override and must give reasons for the outcome.')],
+    [Lg('Tidlig varsling og imøtekommenhet','Early warning and forbearance'), Lg('Signaler gir kontakt med kunden, tilbud om løsning og henvisning til gjeldsrådgivning før eventuell overlevering til inkassoselskap.','Signals lead to contact with the customer, an offer and referral to debt advice before any handover to a collection agency.')],
+    [Lg('Regelverk og kontroll','Rules and control'), Lg('Regler per land, sporbar logg og grunnlag for AI Act-konsekvensvurderingen.','Rules by country, a traceable log and the basis for the AI Act impact assessment.')]
+  ];
+  const integ = [
+    [Lg('Utlånssystem (søknad og beslutning)','Lending system (application and decision)'), Lg('Beslutning, score, beslutningsregler som slo inn, datakilder','Decision, score, decision rules that applied, data sources'), Lg('Forklaring og ny vurdering','Explanation and review')],
+    [Lg('Gjeldsregister og kredittopplysning','Debt register and credit reference'), Lg('Hvilke kilder som ble slått opp','Which sources were consulted'), Lg('Opplysning om database ved avslag','Database disclosure on rejection')],
+    [Lg('Kontosystem og låneadministrasjon','Account system and loan servicing'), Lg('Betalinger, forsinkelser, endringer i lånet','Payments, delays, changes to the loan'), Lg('Tidlig varsling og tilbud','Early warning and offers')],
+    [Lg('Nettbank og app','Online banking and app'), Lg('Forklaringer, forespørsler og tilbud','Explanations, requests and offers'), Lg('Kundedialog','Customer dialogue')],
+    [Lg('Inkassoselskap (ekstern partner)','Collection agency (external partner)'), Lg('Saken med dokumentasjon av kontakt, tilbud og henvisning til gjeldsrådgivning','The case with documentation of contact, offers and referral to debt advice'), Lg('Overlevering, og status tilbake til banken','Handover, and status back to the bank')]
+  ];
+  return `<div class="stack-l">
+    <div class="stack"><div class="eyebrow">${S('grpProposal')}</div><h1>${S('losning')}</h1>
+      <p class="lede">${L('Klarsyn lager ingen ny kredittmodell. Laget leser beslutningen og grunnlaget fra bankens systemer, forklarer det for kunden og samler oppfølgingen i én saksbehandling.','Klarsyn does not create a new credit model. The layer reads the decision and its basis from the bank\'s systems, explains it to the customer and brings the follow-up into one case flow.')}</p></div>
+    <section class="stack"><h2>${L('Fire moduler','Four modules')}</h2>
+      <div class="steps">${mods.map((m,i) => `<div class="step on"><span class="eyebrow">${L('Modul','Module')} ${i+1}</span><h3>${tx(m[0])}</h3><p>${tx(m[1])}</p></div>`).join('')}</div></section>
+    <section class="stack"><h2>${L('Slik henger det sammen','How it fits together')}</h2><div class="panel arch">${archSvg()}</div></section>
+    <section class="stack"><h2>${L('Integrasjon','Integration')}</h2>
+      <div class="tbl-wrap"><table><thead><tr><th>${L('Fra eller til','From or to')}</th><th>Data</th><th>${L('Brukes til','Used for')}</th></tr></thead><tbody>
+      ${integ.map(r => `<tr><td>${tx(r[0])}</td><td>${tx(r[1])}</td><td>${tx(r[2])}</td></tr>`).join('')}</tbody></table></div>
+      <p class="muted" style="font-size:13px">${L('Integrasjonen bygges med API-er og hendelser, så laget reagerer når en beslutning tas eller en betaling uteblir. Data blir i bankens miljø.','The integration uses APIs and events, so the layer reacts when a decision is made or a payment is missed. Data stays in the bank\'s environment.')}</p>
+    </section>
+    <section class="stack"><h2>${L('Åpne offentlige API-er','Open public APIs')}</h2>
+      <p>${L('I tillegg til bankens egne systemer henter Klarsyn data fra åpne API-er som ikke krever innlogging eller avtale. I demoen er svarene simulert med fiktive data.','In addition to the bank\'s own systems, Klarsyn fetches data from open APIs that require no login or agreement. In the demo, the responses are simulated with fictional data.')}</p>
+      <div class="panel"><ul class="apilist">${Object.keys(OPEN_API).map(k => { const o = OPEN_API[k]; return `<li><div><b>${esc(o.name)}</b> · ${tx(o.what)}<small>${tx(o.used)}</small><code>${esc(o.url)}</code></div><a href="${tx(o.doc)}" target="_blank" rel="noopener">${L('Dokumentasjon','Documentation')} ↗</a></li>`; }).join('')}</ul></section></div>
+      <p class="muted" style="font-size:13px">${L('Endepunktene er de offentlige API-ene, men svarene i demoen er fiktive, så tallene skal ikke leses som dagens verdier. Oppslag i Enhetsregisteret på kundens arbeidsgiver er en behandling av personopplysninger og må ha behandlingsgrunnlag etter GDPR, og kunden må informeres.','The endpoints are the public APIs, but the responses in the demo are fictional, so the figures should not be read as current values. Looking up the customer\'s employer in the register is processing of personal data and needs a legal basis under the GDPR, and the customer must be informed.')}</p>
+    </section>
+  </div>`;
+}
+function archSvg(){
+  const box = (x, y, w, h, t1, t2, acc) => `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${acc ? 'var(--accent-soft)' : 'var(--surface)'}" stroke="${acc ? 'var(--accent)' : 'var(--line)'}" stroke-width="${acc ? 2 : 1.25}"/><text x="${x + w/2}" y="${y + h/2 - (t2 ? 3 : -5)}" text-anchor="middle" font-size="13" font-weight="600" fill="var(--ink)">${t1}</text>${t2 ? `<text x="${x + w/2}" y="${y + h/2 + 14}" text-anchor="middle" font-size="11.5" fill="var(--muted)">${t2}</text>` : ''}</g>`;
+  const ln = (x1, y1, x2, y2) => `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--muted)" stroke-width="1.25" marker-end="url(#ar)"/>`;
+  return `<svg viewBox="0 0 760 330" role="img" aria-label="${L('Klarsyn mellom kundekanaler og bankens systemer','Klarsyn between customer channels and the bank\'s systems')}"><defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="var(--muted)"/></marker></defs>
+    ${box(20, 30, 170, 56, L('Kunden','Customer'), L('nettbank og app','online banking and app'))}
+    ${box(20, 240, 170, 56, L('Saksbehandler','Case handler'), L('kø og beslutning','queue and decision'))}
+    <rect x="250" y="20" width="260" height="290" rx="10" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+    <text x="380" y="46" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)">Klarsyn</text>
+    ${box(270, 62, 220, 46, L('1 Forklaring ved avslag','1 Explanation of rejections'))}
+    ${box(270, 120, 220, 46, L('2 Ny vurdering','2 Review on request'))}
+    ${box(270, 178, 220, 46, L('3 Tidlig varsling','3 Early warning'))}
+    ${box(270, 236, 220, 46, L('4 Regelverk og logg','4 Rules and log'))}
+    ${box(570, 30, 170, 50, L('Utlånssystem','Lending system'))}
+    ${box(570, 94, 170, 50, L('Gjeldsregister og','Debt register and'), L('kredittopplysning','credit reference'))}
+    ${box(570, 158, 170, 50, L('Låneadministrasjon','Loan servicing'))}
+    ${box(570, 222, 170, 50, L('Inkassoselskap','Collection agency'), L('ekstern partner','external partner'))}
+    ${ln(250, 58, 192, 58)}${ln(190, 70, 248, 70)}
+    ${ln(190, 268, 248, 268)}${ln(250, 280, 192, 280)}
+    ${ln(568, 55, 512, 55)}${ln(568, 119, 512, 119)}${ln(568, 183, 512, 183)}${ln(512, 247, 568, 247)}
+  </svg>`;
+}
+
+// ---------- Veien videre ----------
+function vVeien(){
+  const phases = [
+    [Lg('Pilot i Sverige','Pilot in Sweden'), Lg('Forklaring og ny vurdering for forbrukslån, der kravene gjelder fra 20.11.2026. Inntil piloten er i drift, dekker banken kravene med manuelle rutiner.','Explanation and review for consumer loans, where the rules apply from 20 Nov 2026. Until the pilot is live, the bank meets the requirements with manual procedures.')],
+    [Lg('Tidlig varsling','Early warning'), Lg('Automatiske signaler og faste tilbud for én låneportefølje. Erstatter de manuelle rutinene for tidlig oppdagelse i Sverige.','Automatic signals and fixed offers for one loan portfolio. Replaces the manual early detection procedures in Sweden.')],
+    [Lg('Norge','Norway'), Lg('Reglene tilpasses når høringsnotat og lovforslag foreligger.','The rules are adapted when the consultation paper and bill are published.')],
+    [Lg('AI Act','AI Act'), Lg('Konsekvensvurdering og rutiner for menneskelig tilsyn på plass før 2.12.2027.','Impact assessment and human oversight procedures in place before 2 Dec 2027.')]
+  ];
+  const kpi = [
+    [Lg('Andel avslag med forklaring levert','Share of rejections with explanation delivered'), Lg('Etterlevelse','Compliance')],
+    [Lg('Forespørsler om ny vurdering, og andel som endres','Review requests, and share changed'), Lg('Kvaliteten på beslutningene','Decision quality')],
+    [Lg('Tid fra forespørsel til svar','Time from request to answer'), Lg('Kundeopplevelse','Customer experience')],
+    [Lg('Andel kunder i tidlig dialog som ikke overleveres til inkasso','Share of customers in early dialogue not handed to collection'), Lg('Effekt av tidlig varsling','Effect of early warning')],
+    [Lg('Klager på kredittbeslutninger','Complaints about credit decisions'), Lg('Kundeopplevelse og risiko','Customer experience and risk')]
+  ];
+  return `<div class="stack-l">
+    <div class="stack"><div class="eyebrow">${S('grpProposal')}</div><h1>${S('veien-videre')}</h1>
+      <p class="lede">${L('Piloten starter der kravene allerede gjelder, og utvides til Norge når reglene er kjent. Anslagene i business case kontrolleres med målingene i piloten.','The pilot starts where the rules already apply and is extended to Norway when the rules are known. The estimates in the business case are checked against the measurements in the pilot.')}</p></div>
+    <section class="stack"><h2>${L('Faser','Phases')}</h2>
+      <div class="steps">${phases.map((p,i) => `<div class="step ${i === 0 ? 'on' : ''}"><span class="eyebrow">${L('Fase','Phase')} ${i+1}</span><h3>${tx(p[0])}</h3><p>${tx(p[1])}</p></div>`).join('')}</div></section>
+    <section class="stack"><h2>${L('Hva som måles','What is measured')}</h2>
+      <div class="tbl-wrap"><table><thead><tr><th>${L('Måltall','Measure')}</th><th>${L('Hva det viser','What it shows')}</th></tr></thead><tbody>
+      ${kpi.map(r => `<tr><td>${tx(r[0])}</td><td>${tx(r[1])}</td></tr>`).join('')}</tbody></table></div></section>
+    <section class="panel"><h3>${L('Beslutninger vi trenger før piloten','Decisions we need before the pilot')}</h3>
+      <ul style="margin:0; padding-left:20px; display:flex; flex-direction:column; gap:6px; font-size:14px">
+        <li>${L('Omfang: hvilke produkter og hvilket land piloten gjelder.','Scope: which products and which country the pilot covers.')}</li>
+        <li>${L('Hvilke data som kan brukes til tidlig varsling, vurdert mot formålet de ble samlet inn for (GDPR).','Which data may be used for early warning, assessed against the purpose they were collected for (GDPR).')}</li>
+        <li>${L('Hvem i banken som eier saksbehandlingen for ny vurdering og tidlig dialog.','Who in the bank owns the case handling for reviews and early dialogue.')}</li>
+      </ul></section>
+  </div>`;
+}
+
+// ---------- Om løsningsforslaget ----------
+function vOm(){
+  return `<div class="stack-l">
+    <div class="stack"><div class="eyebrow">${S('grpProposal')}</div><h1>${S('om')}</h1>
+      <p class="lede">${L('Dette er et konseptforslag med en klikkbar demo. Lysvik Bank og Kystlys Software er fiktive, og alle kunder, søknader og lån er eksempeldata.','This is a concept proposal with a clickable demo. Lysvik Bank and Kystlys Software are fictional, and all customers, applications and loans are sample data.')}</p></div>
+    <section class="grid2">
+      <div class="panel"><h2 class="h-card">${L('Hva som er simulert','What is simulated')}</h2><ul style="margin:0; padding-left:20px; display:flex; flex-direction:column; gap:6px; font-size:14px">
+        <li>${L('Kredittvurderingen følger en forenklet, fiktiv policy for Lysvik Bank: betjeningsevne med renteøkning, samlet gjeld mot inntekt og betalingsanmerkninger.','The credit assessment follows a simplified, fictional policy for Lysvik Bank: ability to pay with a rate increase, total debt to income and payment remarks.')}</li>
+        <li>${L('Skatt og livsopphold er grove normtall, ikke reelle satser. At midlertidig ansettelse eller egen næring gir manuell vurdering, er også en fiktiv regel.','Tax and living costs are rough standard figures, not real rates. That temporary employment or self-employment leads to manual review is also a fictional rule.')}</li>
+        <li>${L('Koblingene til de åpne API-ene er simulert: endepunktene er de offentlige, men svarene er fiktive. Bankens egne systemer er ikke koblet.','The connections to the open APIs are simulated: the endpoints are the public ones, but the responses are fictional. The bank\'s own systems are not connected.')}</li>
+        <li>${L('Endringer lagres bare i nettleseren.','Changes are stored only in the browser.')}</li>
+      </ul></div>
+      <div class="panel"><h2 class="h-card">${L('Hva som er reelt','What is real')}</h2><ul style="margin:0; padding-left:20px; display:flex; flex-direction:column; gap:6px; font-size:14px">
+        <li>${L('Regelhenvisningene og datoene, kontrollert mot primærkilder per 9.11.2026. Kildene står under «Regelverket».','The legal references and dates, checked against primary sources as of 9 Nov 2026. The sources are listed under «The rules».')}</li>
+        <li>${L('Beregningen av «hva måtte vært annerledes» kjører modellen på nytt med endrede opplysninger.','The «what would have had to be different» calculation reruns the model with changed information.')}</li>
+        <li>${L('Effekten av tilbud ved betalingsproblemer regnes ut med vanlig annuitetsformel.','The effect of offers for payment problems is calculated with a standard annuity formula.')}</li>
+        <li>${L('Endepunktene og dokumentasjonen til de åpne API-ene under «Løsning og integrasjon».','The endpoints and documentation of the open APIs under «Solution and integration».')}</li>
+      </ul></div>
+    </section>
+    <div class="note warn"><b>${L('Ikke juridisk rådgivning','Not legal advice')}</b><span>${L('Oversikten over regelverket er en forenkling til demoformål.','The overview of the rules is a simplification for demo purposes.')}</span></div>
+    <div class="foot"><span>${L('Uavhengig konseptdemo.','Independent concept demo.')}</span><span>${L('Lysvik Bank, Kystlys Software og Klarsyn er fiktive. Demoen er ikke juridisk rådgivning.','Lysvik Bank, Kystlys Software and Klarsyn are fictional. The demo is not legal advice.')}</span></div>
+  </div>`;
+}
+
+// ---------- Business case ----------
+// Regneeksempel med fiktive antakelser. Alle beløp i NOK (svenske tall omregnet).
+const BC_SCEN = {
+  low:{ t:['Forsiktig','Cautious'], avoid:10, minNew:50, ramp:40 },
+  mid:{ t:['Forventet','Expected'], avoid:15, minNew:35, ramp:50 },
+  high:{ t:['Optimistisk','Optimistic'], avoid:25, minNew:25, ramp:70 }
+};
+const BC_DEF = { scen:'mid', loans:45000, bal:90000, toColl:2, avoid:15, lgdColl:60, lgdAgr:25,
+  rej:25000, ask:6, minNow:90, minNew:35, hour:900, impl:4000000, lic:1500000, ops:500000, ramp:50 };
+let BC = { ...BC_DEF };
+const BC_FIELDS = [
+  { g:Lg('Tidlig varsling','Early warning'), f:[
+    ['loans', Lg('Usikrede lån i porteføljen','Unsecured loans in the portfolio'), '', 1000],
+    ['bal', Lg('Snittsaldo','Average balance'), 'kr', 5000],
+    ['toColl', Lg('Andel som går til inkasso per år','Share handed to collection per year'), '%', 0.5],
+    ['avoid', Lg('Andel av disse som unngås med tidlig tilbud','Share of these avoided by an early offer'), '%', 1],
+    ['lgdColl', Lg('Tap når saken går til inkasso','Loss when the case goes to collection'), '%', 5],
+    ['lgdAgr', Lg('Tap når kunden får en avtale','Loss when the customer gets an agreement'), '%', 5]
+  ]},
+  { g:Lg('Avslag og ny vurdering','Rejections and review'), f:[
+    ['rej', Lg('Avslag per år','Rejections per year'), '', 1000],
+    ['ask', Lg('Andel som ber om forklaring eller ny vurdering','Share asking for an explanation or review'), '%', 1],
+    ['minNow', Lg('Minutter per sak i dag','Minutes per case today'), 'min', 5],
+    ['minNew', Lg('Minutter per sak med Klarsyn','Minutes per case with Klarsyn'), 'min', 5],
+    ['hour', Lg('Kostnad per saksbehandlertime','Cost per case handler hour'), 'kr', 50]
+  ]},
+  { g:Lg('Kostnader','Costs'), f:[
+    ['impl', Lg('Innføring (engang)','Implementation (one-off)'), 'kr', 100000],
+    ['lic', Lg('Lisens per år','Licence per year'), 'kr', 100000],
+    ['ops', Lg('Intern forvaltning per år','Internal operation per year'), 'kr', 50000],
+    ['ramp', Lg('Gevinst år 1 (opptrapping)','Benefit in year 1 (ramp-up)'), '%', 10]
+  ]}
+];
+
+function bcCalc(B){
+  const avoided = B.loans * B.toColl/100 * B.avoid/100;
+  const loss = avoided * B.bal * Math.max(0, B.lgdColl - B.lgdAgr)/100;
+  const cases = B.rej * B.ask/100;
+  const hours = cases * Math.max(0, B.minNow - B.minNew)/60;
+  const work = hours * B.hour;
+  const benefit = loss + work, run = B.lic + B.ops;
+  const years = [1,2,3].map(y => { const b = benefit * (y === 1 ? B.ramp/100 : 1); const c = run + (y === 1 ? B.impl : 0); return { y, b, c, n:b - c }; });
+  let acc = 0; years.forEach(r => { acc += r.n; r.acc = acc; });
+  // Tilbakebetalingstid i måneder (jevn fordeling innen hvert år)
+  let pay = null, cum = -B.impl;
+  for(let m = 1; m <= 60 && pay == null; m++){ const y = Math.ceil(m/12); cum += (benefit * (y === 1 ? B.ramp/100 : 1) - run)/12; if(cum >= 0) pay = m; }
+  return { avoided, loss, cases, hours, work, benefit, run, years, pay };
+}
+const mnok = v => LANG === 'en' ? `NOK ${(v/1e6).toLocaleString('en-GB', {maximumFractionDigits:1, minimumFractionDigits:1})}m` : `${(v/1e6).toLocaleString('nb-NO', {maximumFractionDigits:1, minimumFractionDigits:1})} mill. kr`;
+
+function bcResults(){
+  const r = bcCalc(BC), y2 = r.years[1];
+  const max = Math.max(r.loss, r.work, r.run, 1);
+  const bar = (lbl, v, cls) => `<div class="bcrow"><span>${lbl}</span><span class="trk"><i class="${cls}" style="width:${Math.max(2, v/max*100)}%"></i></span><b>${mnok(v)}</b></div>`;
+  return `<div class="kpis bc-k">
+      <div class="kpi t-ok"><span class="v">${mnok(r.benefit)}</span><span class="l">${L('Gevinst per år ved full effekt','Benefit per year at full effect')}</span></div>
+      <div class="kpi t-warn"><span class="v">${mnok(r.run)}</span><span class="l">${L('Løpende kostnad per år','Running cost per year')}</span></div>
+      <div class="kpi ${y2.n >= 0 ? 't-acc' : 't-bad'}"><span class="v">${mnok(y2.n)}</span><span class="l">${L('Netto per år fra år 2','Net per year from year 2')}</span></div>
+      <div class="kpi t-info"><span class="v">${r.pay == null ? L('Over 5 år','Over 5 yrs') : r.pay + ' ' + L('mnd.','mo.')}</span><span class="l">${L('Tilbakebetalingstid','Payback period')}</span></div>
+    </div>
+    <div class="panel stack">
+      <h2 class="h-card">${L('Hvor gevinsten kommer fra','Where the benefit comes from')}</h2>
+      ${bar(L('Lavere kredittap','Lower credit losses'), r.loss, 'ok')}
+      ${bar(L('Mindre saksbehandling','Less case handling'), r.work, 'ok')}
+      ${bar(L('Lisens og forvaltning','Licence and operation'), r.run, 'warn')}
+      <p class="muted" style="font-size:13px; margin:0">${L(`Omtrent ${num(r.avoided)} saker per år unngår inkasso, og saksbehandlerne sparer omtrent ${num(r.hours)} timer på ${num(r.cases)} forespørsler.`, `About ${num(r.avoided)} cases a year avoid collection, and case handlers save about ${num(r.hours)} hours on ${num(r.cases)} requests.`)}</p>
+    </div>
+    <div class="tbl-wrap"><table><thead><tr><th><span class="sr-only">${L('År','Year')}</span></th><th>${L('Gevinst','Benefit')}</th><th>${L('Kostnad','Cost')}</th><th>${L('Netto','Net')}</th><th>${L('Akkumulert','Cumulative')}</th></tr></thead><tbody>
+      ${r.years.map(x => `<tr><td>${L('År','Year')} ${x.y}</td><td class="num">${mnok(x.b)}</td><td class="num">${mnok(x.c)}</td><td class="num">${mnok(x.n)}</td><td class="num"><b class="${x.acc >= 0 ? 'pos' : 'neg'}">${mnok(x.acc)}</b></td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+function vBusiness(){
+  const field = ([k, lbl, unit, step]) => `<label class="bcf"><span>${tx(lbl)}</span><span class="bcin"><input type="number" data-k="${k}" value="${BC[k]}" min="0" step="${step}"${unit === '%' ? ' max="100"' : ''}><em>${unit === 'kr' ? (LANG === 'en' ? 'NOK' : 'kr') : unit}</em></span></label>`;
+  const alts = [
+    [Lg('Tilpasse utlånssystemet selv','Adapt the lending system in-house'), Lg('Krever endringer i kjernesystemet for hvert land, og forklaring, kø og tidlig varsling må bygges hver for seg.','Requires changes to the core system for each country, and explanations, queue and early warning must be built separately.'), 'warn', Lg('Høy innføringskostnad','High implementation cost')],
+    [Lg('Håndtere manuelt','Handle manually'), Lg('Rask å starte, men kostnaden vokser med antall saker, og etterlevelsen er vanskelig å dokumentere.','Quick to start, but the cost grows with the number of cases, and compliance is hard to document.'), 'bad', Lg('Høy løpende kostnad','High running cost')],
+    [Lg('Klarsyn som lag oppå','Klarsyn as a layer on top'), Lg('Ingen endring i kredittmodellen. Én løsning for begge land, med logg og regler per land.','No change to the credit model. One solution for both countries, with a log and rules by country.'), 'ok', Lg('Anbefalt','Recommended')]
+  ];
+  return `<div class="stack-l">
+    <div class="stack"><div class="eyebrow">${S('grpProposal')}</div><h1>${S('business')}</h1>
+      <p class="lede">${L('Et regneeksempel for Lysvik Bank. Tallene er fiktive antakelser som kan erstattes med bankens egne tall. Poenget er å vise hvordan gevinsten regnes ut, ikke å love et bestemt resultat.','A worked example for Lysvik Bank. The figures are fictional assumptions that can be replaced with the bank\'s own figures. The point is to show how the benefit is calculated, not to promise a specific result.')}</p></div>
+    <div class="row" style="gap:10px; flex-wrap:wrap"><span class="muted" style="font-size:13.5px">${L('Scenario','Scenario')}:</span>
+      <div class="seg" role="group" aria-label="${L('Scenario','Scenario')}">${Object.keys(BC_SCEN).map(k => `<button type="button" data-scen="${k}" aria-pressed="${BC.scen === k}">${L(...BC_SCEN[k].t)}</button>`).join('')}</div>
+      ${BC.scen === 'custom' ? `<span class="pill">${L('Egne tall','Own figures')}</span>` : ''}
+      <button type="button" class="btn" id="bcReset" style="margin-left:auto">${L('Tilbakestill tallene','Reset the figures')}</button></div>
+    <div class="split">
+      <div class="stack" id="bcRes">${bcResults()}</div>
+      <div class="stack sticky"><section class="panel stack"><h2 class="h-card">${L('Antakelser','Assumptions')}</h2>
+        ${BC_FIELDS.map(g => `<div class="bcg"><b>${tx(g.g)}</b>${g.f.map(field).join('')}</div>`).join('')}
+        <p class="muted" style="font-size:12.5px; margin:0">${L('Fiktive tall. Beløp i norske kroner; svenske lån er regnet om. Lavere gevinst i år 1 fordi tidlig varsling, som gir det meste av gevinsten, kommer i fase 2.','Fictional figures. Amounts in Norwegian kroner; Swedish loans are converted. Lower benefit in year 1 because early warning, which gives most of the benefit, comes in phase 2.')}</p></section></div>
+    </div>
+    <section class="stack"><h2>${L('Gevinster som ikke er regnet med','Benefits not included')}</h2>
+      <div class="grid2">
+        <div class="panel stack" style="gap:6px"><h3>${L('Lavere risiko for sanksjoner','Lower risk of sanctions')}</h3><p style="margin:0; font-size:14px">${L('I Sverige fører Finansinspektionen tilsyn med de nye kravene fra 20.11.2026. Brudd kan gi sanksjoner og omdømmetap.','In Sweden, Finansinspektionen supervises the new requirements from 20 Nov 2026. Breaches can lead to sanctions and reputational damage.')}</p></div>
+        <div class="panel stack" style="gap:6px"><h3>${L('Færre klagesaker','Fewer complaints')}</h3><p style="margin:0; font-size:14px">${L('Kunder som forstår avslaget og får en ny vurdering, klager sjeldnere til klagenemnda.','Customers who understand the rejection and get a review complain less often to the complaints board.')}</p></div>
+        <div class="panel stack" style="gap:6px"><h3>${L('Klar for AI Act','Ready for the AI Act')}</h3><p style="margin:0; font-size:14px">${L('Logg, menneskelig tilsyn og forklaringer gir grunnlaget for kravene som gjelder i EU fra 2.12.2027.','Logs, human oversight and explanations provide the basis for the requirements that apply in the EU from 2 Dec 2027.')}</p></div>
+        <div class="panel stack" style="gap:6px"><h3>${L('Kunder beholdes','Customers are retained')}</h3><p style="margin:0; font-size:14px">${L('En kunde som får hjelp i tide, beholder ofte kundeforholdet. Kundeforholdet avsluttes ofte når saken er hos inkassoselskapet.','A customer who gets help in time often stays with the bank. The relationship often ends once a case is with the collection agency.')}</p></div>
+      </div></section>
+    <section class="stack"><h2>${L('Alternativene','The alternatives')}</h2>
+      <div class="tbl-wrap"><table><thead><tr><th>${L('Alternativ','Alternative')}</th><th>${L('Vurdering','Assessment')}</th><th><span class="sr-only">${L('Konklusjon','Conclusion')}</span></th></tr></thead><tbody>
+      ${alts.map(a => `<tr><td><b style="font-weight:600">${tx(a[0])}</b></td><td>${tx(a[1])}</td><td><span class="pill ${a[2]}">${tx(a[3])}</span></td></tr>`).join('')}</tbody></table></div></section>
+    <div class="note"><b>${L('Om tallene','About the figures')}</b><span>${L('Tapsprosentene, tidsbruken og kostnadene er antakelser for demoen, ikke tall fra en bank eller fra Kystlys Software. I et ekte forslag hentes de fra bankens egne data i en innledende analyse.','The loss rates, time spent and costs are assumptions for the demo, not figures from a bank or from Kystlys Software. In a real proposal they would come from the bank\'s own data in an initial analysis.')}</span></div>
+  </div>`;
+}
+AFTER.business = () => {
+  $$('[data-scen]').forEach(b => b.addEventListener('click', () => { const s = BC_SCEN[b.dataset.scen]; BC = { ...BC, scen:b.dataset.scen, avoid:s.avoid, minNew:s.minNew, ramp:s.ramp }; render(); }));
+  const rs = $('#bcReset'); if(rs) rs.addEventListener('click', () => { BC = { ...BC_DEF }; render(); });
+  $$('.bcf input').forEach(i => i.addEventListener('input', () => {
+    const v = Number(i.value); if(!isFinite(v) || v < 0) return;
+    BC[i.dataset.k] = v;
+    if(BC.scen !== 'custom'){ BC.scen = 'custom'; $$('[data-scen]').forEach(b => b.setAttribute('aria-pressed', 'false')); }
+    $('#bcRes').innerHTML = bcResults();
+  }));
+};
+
+// ---------- Kredittsøknader ----------
+let FILTER = { land:'alle', st:'alle' };
+const flag = c => `<span class="flag" title="${cn(c)}">${c}</span>`;
+function vSoknader(){
+  const rej = APPS.filter(a => assess(a).outcome === 'avslag' && a.auto);
+  const reviewed = APPS.filter(a => a.review && a.request);
+  const changed = APPS.filter(a => a.status === 'vurdert-innvilget').length;
+  return `<div class="stack-l">
+    <div class="stack"><div class="eyebrow">${S('grpDemo')}</div><h1>${S('soknader')}</h1>
+      <p class="lede">${L('Alle søknader om forbrukslån og kredittkort siste to uker. Avslag får forklaring automatisk, og saker som trenger et menneske havner i køen.','All applications for consumer loans and credit cards in the last two weeks. Rejections get an explanation automatically, and cases that need a person go to the queue.')}</p></div>
+    ${sampleBanner()}
+    <div class="kpis">
+      <div class="kpi t-acc"><span class="v">${APPS.length}</span><span class="l">${L('Søknader','Applications')}</span></div>
+      <div class="kpi t-ok"><span class="v">${rej.length}</span><span class="l">${L('Automatiske avslag, alle med forklaring','Automated rejections, all with explanation')}</span></div>
+      <div class="kpi t-warn"><span class="v">${APPS.filter(a => NEEDS_HUMAN.has(a.status)).length}</span><span class="l">${L('Venter på saksbehandler','Awaiting a case handler')}</span></div>
+      <div class="kpi t-info"><span class="v">${APPS.filter(a => a.status.startsWith('vurdert')).length}</span><span class="l">${L(`Nye vurderinger, ${changed} endret`, `Reviews, ${changed} changed`)}</span></div>
+    </div>
+    <div class="filters">
+      <div class="seg" role="group" aria-label="${L('Land','Country')}">${['alle','NO','SE'].map(k => `<button type="button" data-land="${k}" aria-pressed="${FILTER.land === k}">${k === 'alle' ? L('Alle land','All countries') : cn(k)}</button>`).join('')}</div>
+      <div class="seg" role="group" aria-label="Status">${[['alle',L('Alle','All')],['ko',L('Venter på saksbehandler','Awaiting case handler')],['avslag',L('Avslått','Rejected')]].map(([k,t]) => `<button type="button" data-st="${k}" aria-pressed="${FILTER.st === k}">${t}</button>`).join('')}</div>
+    </div>
+    <div class="tbl-wrap"><table><thead><tr><th>${L('Søknad','Application')}</th><th>${L('Kunde','Customer')}</th><th>${L('Land','Country')}</th><th>${L('Produkt','Product')}</th><th>${L('Beløp','Amount')}</th><th>${L('Vurdering','Assessment')}</th><th>Status</th><th>${L('Mottatt','Received')}</th></tr></thead><tbody id="appRows">${appRows()}</tbody></table></div>
+  </div>`;
+}
+function appRows(){
+  const rows = APPS.filter(a => (FILTER.land === 'alle' || a.country === FILTER.land) && (FILTER.st === 'alle' || (FILTER.st === 'ko' ? NEEDS_HUMAN.has(a.status) : ['avslatt','vurdert-avslatt','ny-vurdering'].includes(a.status))));
+  if(!rows.length) return `<tr><td colspan="8" class="muted">${L('Ingen søknader passer filteret.','No applications match the filter.')}</td></tr>`;
+  return rows.map(a => `<tr class="click" data-id="${a.id}" tabindex="0"><td class="mono">${a.id}</td><td>${esc(a.name)}</td><td>${flag(a.country)}</td><td>${prod(a.product)}</td><td class="num">${money(a.amount, COUNTRY[a.country].cur)}</td><td>${a.auto ? L('Automatisk','Automated') : L('Manuell','Manual')}</td><td><span class="pill ${APP_STATUS[a.status].c}">${ast(a.status)}</span></td><td class="num">${fmtDs(parseIso(a.date))}</td></tr>`).join('');
+}
+AFTER.soknader = () => {
+  $$('[data-land]').forEach(b => b.addEventListener('click', () => { FILTER.land = b.dataset.land; render(); }));
+  $$('[data-st]').forEach(b => b.addEventListener('click', () => { FILTER.st = b.dataset.st; render(); }));
+  $$('#appRows tr.click').forEach(tr => { const go = () => location.hash = 'soknad-' + tr.dataset.id; tr.addEventListener('click', go); tr.addEventListener('keydown', e => { if(e.key === 'Enter') go(); }); });
+};
+
+// ---------- Søknad ----------
+function factorList(r, a){
+  return `<div class="factors">${r.F.map(f => { const cls = !f.ok && f.hard ? 'bad' : (f.warn || !f.ok) ? 'warn' : 'ok'; const ic = !f.ok && f.hard ? '✕' : (f.warn || !f.ok) ? '!' : '✓';
+    return `<div class="factor"><span class="ico ${cls}">${ic}</span><div><b style="font-weight:600">${tx(f.label)}</b><small>${tx(f.why)}</small><small>${L('Kilde','Source')}: ${tx(SRC[f.src][a.country])}</small></div><span class="val">${tx(f.val)}</span></div>`; }).join('')}</div>`;
+}
+function cfText(a){
+  const cf = counterfactual(a); if(!cf) return '';
+  const cur = COUNTRY[a.country].cur;
+  if(cf.kind === 'remark') return `<div class="cf"><b>${L('Hva måtte vært annerledes','What would have had to be different')}</b><span>${L('Søknaden kan ikke innvilges så lenge en betalingsanmerkning er registrert. Når den er slettet, kan kunden søke på nytt.','The application cannot be approved while a payment remark is registered. Once it is removed, the customer can apply again.')}</span></div>`;
+  const res = c => c.out === 'manuell' ? L(' – gir manuell vurdering',' – leads to manual review') : c.out === 'innvilget' ? L(' – gir innvilgelse',' – leads to approval') : '';
+  if(cf[0].kind === 'none') return `<div class="cf"><b>${L('Hva måtte vært annerledes','What would have had to be different')}</b><span>${L('Ingen enkel endring i beløp, løpetid eller annen gjeld gir et annet utfall. Inntekten eller de faste utgiftene må endres.','No simple change in amount, term or other debt gives a different outcome. Income or fixed costs would have to change.')}</span></div>`;
+  const items = cf.map(c => (c.kind === 'amount' ? L(`Lånebeløp ${money(c.amount, cur)} i stedet for ${money(a.amount, cur)}`, `Loan amount ${money(c.amount, cur)} instead of ${money(a.amount, cur)}`)
+    : c.kind === 'term' ? L(`Nedbetalingstid ${c.term} mnd. i stedet for ${a.term} mnd.`, `Repayment period ${c.term} months instead of ${a.term} months`)
+    : c.kind === 'unsecured' ? L(`Annen usikret gjeld (${money(a.unsecured, cur)}) innfridd`, `Other unsecured debt (${money(a.unsecured, cur)}) repaid`)
+    : '') + res(c));
+  return `<div class="cf"><b>${L('Hva måtte vært annerledes','What would have had to be different')}</b><span>${L('Hver av disse endringene alene ville gitt et annet utfall:','Each of these changes on its own would have given a different outcome:')}</span><ul style="margin:0; padding-left:20px">${items.map(i => `<li>${i}</li>`).join('')}</ul></div>`;
+}
+function letterHtml(a, r){
+  const reasons = r.fail.map(f => f.k === 'remark' ? L('Det er registrert en betalingsanmerkning på deg.','A payment remark is registered against you.')
+    : f.k === 'margin' ? L('Etter at faste utgifter og alle lån er betalt, ville du ikke hatt nok igjen hver måned hvis renten øker.','After fixed costs and all loans are paid, you would not have enough left each month if interest rates rise.')
+    : L('Samlet gjeld ville blitt høyere enn bankens grense i forhold til inntekten din.','Your total debt would be higher than the bank\'s limit relative to your income.'));
+  const srcs = [...new Set(r.F.filter(f => f.src !== 'calc').map(f => tx(SRC[f.src][a.country])))];
+  const advice = a.country === 'SE' ? L('kommunens budsjett- og gjeldsrådgivning','your municipality\'s budget and debt advice service') : L('Navs økonomiske rådgivning','Nav\'s financial advice service');
+  return `<div class="letter">${lysvikLogo(false, 28)}<span class="eyebrow">${L('Melding i nettbanken','Message in online banking')} · ${fmtD(parseIso(a.date))}</span>
+    <h3>${L(`Svar på søknad om ${prod(a.product).toLowerCase()}`, `Response to your ${prod(a.product).toLowerCase()} application`)}</h3>
+    <p>${L(`Hei ${esc(a.name.split(' ')[0])}. Vi kan dessverre ikke innvilge søknaden din om ${money(a.amount, COUNTRY[a.country].cur)}.`, `Hi ${esc(a.name.split(' ')[0])}. Unfortunately we cannot approve your application for ${money(a.amount, COUNTRY[a.country].cur)}.`)}</p>
+    <b>${L('Hvorfor','Why')}</b><ul>${reasons.map(x => `<li>${x}</li>`).join('')}</ul>
+    <b>${L('Opplysninger vi har brukt','Information we used')}</b><ul>${srcs.map(x => `<li>${x}</li>`).join('')}</ul>
+    ${a.auto ? `<p>${L('Søknaden ble vurdert automatisk. Du kan be om at en saksbehandler vurderer den på nytt, legge til opplysninger og si din mening.','Your application was assessed automatically. You can ask for a case handler to review it, add information and give your view.')}</p>` : ''}
+    <p>${L(`Har du behov for hjelp med økonomien, kan du kontakte ${advice}. Tjenesten er gratis.`, `If you need help with your finances, you can contact ${advice}. The service is free.`)}</p>
+    <span class="sig">Lysvik Bank</span></div>`;
+}
+let REQ_FORM = false;
+function vSoknad(a){
+  const r = assess(a), C = COUNTRY[a.country];
+  const rr = a.request ? assess(a, a.request.change || {}) : null;
+  const OUT = { avslag:[L('Avslag','Rejected'),'bad'], manuell:[L('Manuell vurdering','Manual review'),'warn'], innvilget:[L('Innvilget','Approved'),'ok'] };
+  let action = '';
+  if(a.status === 'avslatt' && a.auto){
+    action = REQ_FORM ? `<div class="panel stack"><h2 class="h-card">${L('Kunden ber om ny vurdering','The customer requests a review')}</h2>
+      <label class="f">${L('Kundens forklaring','The customer\'s statement')}<textarea id="reqText" maxlength="600">${L('Jeg mener vurderingen er feil, fordi …','I believe the assessment is wrong, because …')}</textarea></label>
+      <label class="f">${L('Nye opplysninger','New information')}<select id="reqChange"><option value="none">${L('Ingen nye opplysninger','No new information')}</option><option value="income">${L('Høyere årsinntekt','Higher annual income')}</option><option value="unsecured">${L('Annen gjeld er innfridd','Other debt has been repaid')}</option></select></label>
+      <label class="f" id="incWrap" hidden>${L('Ny årsinntekt','New annual income')} (${C.cur})<input type="number" id="reqIncome" value="${Math.round(a.income * 1.1 / 10000) * 10000}" min="0" step="10000"></label>
+      <div class="row"><button class="btn primary" id="reqSend">${L('Send forespørsel','Send request')}</button><button class="btn" id="reqCancel">${L('Avbryt','Cancel')}</button></div></div>`
+    : `<div class="panel stack"><h2 class="h-card">${L('Kundens rett til ny vurdering','The customer\'s right to a review')}</h2><p style="font-size:14px">${L('Avslaget ble gitt automatisk, så kunden kan be om at en saksbehandler vurderer saken på nytt.','The rejection was automated, so the customer can ask a case handler to review it.')}</p><div class="row"><button class="btn primary" id="reqOpen">${L('Simuler: kunden ber om ny vurdering','Simulate: the customer requests a review')}</button></div></div>`;
+  } else if(NEEDS_HUMAN.has(a.status)){
+    const base = rr || r;
+    action = `<div class="panel stack"><h2 class="h-card">${L('Saksbehandlers vurdering','Case handler\'s assessment')}</h2>
+      ${a.request ? `<div class="suggest"><b>${L('Kundens forklaring','The customer\'s statement')}</b><span>«${esc(tx(a.request.text))}»</span><span class="muted" style="font-size:13px">${L('Nye opplysninger','New information')}: ${esc(tx(a.request.changeLabel))}</span></div>` : `<div class="note"><b>${L('Hvorfor manuell','Why manual')}</b><span>${L('Ansettelsesforholdet gir manuell vurdering etter bankens policy.','The employment type triggers manual review under the bank\'s policy.')}</span></div>`}
+      <div class="row"><span class="muted">${a.request ? L('Modellen med nye opplysninger','The model with new information') : L('Modellens vurdering','The model\'s assessment')}:</span><span class="pill ${OUT[base.outcome][1]}">${OUT[base.outcome][0]}</span><span class="muted num">${L('Betjeningsevne','Ability to pay')} ${money(base.margin, C.cur)} ${L('per mnd.','per month')}</span></div>
+      <div class="choice" role="radiogroup" aria-label="${L('Beslutning','Decision')}">
+        <label><input type="radio" name="dec" value="innvilget"> ${L('Innvilg','Approve')}</label>
+        <label><input type="radio" name="dec" value="lavere"> ${L('Innvilg lavere beløp','Approve a lower amount')}</label>
+        <label><input type="radio" name="dec" value="avslag"> ${a.request ? L('Avslag står','Rejection upheld') : L('Avslå','Reject')}</label></div>
+      <label class="f" id="lowWrap" hidden>${L('Nytt beløp','New amount')} (${C.cur})<input type="number" id="lowAmt" value="${Math.max(10000, Math.round(a.amount * 0.6 / 10000) * 10000)}" min="10000" step="10000"></label>
+      <label class="f">${L('Begrunnelse til kunden','Reasons for the customer')}<span class="h">${L('Minst 30 tegn. Teksten sendes til kunden og lagres i loggen.','At least 30 characters. The text is sent to the customer and saved in the log.')}</span><textarea id="decText" maxlength="800"></textarea></label>
+      <label class="chk"><input type="checkbox" id="decAdvice"><span>${L('Kunden er henvist til gjeldsrådgivning','The customer has been referred to debt advice')}<small>${L('Påkrevd ved avslag','Required for rejections')}</small></span></label>
+      <div class="row"><button class="btn primary" id="decSave">${L('Lagre beslutning','Save decision')}</button></div></div>`;
+  } else if(a.review){
+    action = `<div class="panel stack"><h2 class="h-card">${a.request ? L('Ny vurdering','Review') : L('Manuell vurdering','Manual review')}</h2><div class="suggest"><b>${a.review.decision === 'avslag' ? (a.request ? L('Avslag står','Rejection upheld') : L('Avslått','Rejected')) : L('Innvilget','Approved')}${a.review.amount ? ` · ${money(a.review.amount, C.cur)}` : ''}</b><span>${esc(tx(a.review.reason))}</span><span class="muted" style="font-size:13px">${esc(a.review.by)} · ${fmtD(parseIso(a.review.date))}</span></div></div>`;
+  } else if(r.outcome !== 'avslag'){
+    action = `<div class="note ok"><b>${L('Innvilget','Approved')}</b><span>${L('Kunden kan likevel be om en forklaring av den automatiske vurderingen (GDPR art. 15).','The customer can still ask for an explanation of the automated assessment (GDPR Art. 15).')}</span></div>`;
+  }
+  return `<div class="stack-l">
+    <div class="stack"><a href="#soknader" style="font-size:13px">← ${S('soknader')}</a>
+      <div class="row" style="justify-content:space-between"><h1 style="font-size:30px">${esc(a.name)}</h1><span class="pill ${APP_STATUS[a.status].c}">${ast(a.status)}</span></div>
+      <dl class="meta"><dt>${L('Søknad','Application')}</dt><dd class="mono">${a.id}</dd><dt>${L('Land','Country')}</dt><dd>${cn(a.country)}</dd><dt>${L('Produkt','Product')}</dt><dd>${prod(a.product)}${a.product === 'forbrukslan' ? `, ${a.term} ${L('mnd.','months')}` : ''}</dd><dt>${L('Beløp','Amount')}</dt><dd class="num">${money(a.amount, C.cur)}</dd><dt>${L('Vurdering','Assessment')}</dt><dd>${a.auto ? L('Automatisk','Automated') : L('Manuell','Manual')} · <span class="pill ${OUT[r.outcome][1]}">${OUT[r.outcome][0]}</span></dd></dl></div>
+    ${sampleBanner()}
+    <div class="split">
+      <div class="stack">
+        <section class="panel"><div class="panel-h"><h2 class="h-card">${L('Grunnlaget for beslutningen','The basis for the decision')}</h2><span class="muted" style="font-size:12.5px">${L('Lysvik Banks policy (fiktiv)','Lysvik Bank\'s policy (fictional)')}</span></div>${factorList(r, a)}</section>
+        ${cfText(a)}
+        ${r.outcome === 'avslag' ? `<section class="stack"><h2 class="h-card">${L('Forklaringen kunden fikk','The explanation the customer received')}</h2>${letterHtml(a, r)}</section>` : ''}
+        <section class="panel"><h2 class="h-card">${L('Logg','Log')}</h2><ul class="log">${a.log.map(l => `<li><time>${fmtD(parseIso(l.d))}</time><span>${esc(tx(l.t))}</span></li>`).join('')}</ul></section>
+      </div>
+      <div class="stack sticky">
+        ${action}
+        ${apiPanelApp(a)}
+        <section class="panel"><div class="panel-h"><h2 class="h-card">${L(`Regler ved avslag i ${cn(a.country)}`, `Rules for rejections in ${cn(a.country)}`)}</h2>${flag(a.country)}</div>
+          <ul class="rights">${rights(a).map(x => `<li><span>${tx(x.t)}</span>${rpill(x.s)}<small>${tx(x.src)}</small></li>`).join('')}</ul></section>
+      </div>
+    </div></div>`;
+}
+AFTER.soknad = h => {
+  const a = appById(h.slice(7)); if(!a) return;
+  const o = $('#reqOpen'); if(o) o.addEventListener('click', () => { REQ_FORM = true; render(); });
+  const c = $('#reqCancel'); if(c) c.addEventListener('click', () => { REQ_FORM = false; render(); });
+  const sel = $('#reqChange'); if(sel) sel.addEventListener('change', () => $('#incWrap').hidden = sel.value !== 'income');
+  const s = $('#reqSend'); if(s) s.addEventListener('click', () => {
+    const text = $('#reqText').value.trim(); if(text.length < 10){ toast(L('Skriv kundens forklaring','Write the customer\'s statement')); return; }
+    const k = $('#reqChange').value, cur = COUNTRY[a.country].cur;
+    const change = k === 'income' ? { income:Math.max(0, Number($('#reqIncome').value) || a.income) } : k === 'unsecured' ? { unsecured:0 } : {};
+    const label = k === 'income' ? Lg(`Ny årsinntekt ${money(change.income, cur)}`, `New annual income ${money(change.income, cur)}`) : k === 'unsecured' ? Lg('Annen usikret gjeld er innfridd','Other unsecured debt has been repaid') : Lg('Ingen nye opplysninger','No new information');
+    a.request = { date:iso(TODAY), text:Lg(text, text), change, changeLabel:label };
+    a.status = 'ny-vurdering'; a.log.push({ d:iso(TODAY), t:Lg('Kunden ba om ny vurdering','The customer requested a review') });
+    REQ_FORM = false; saveApps(); render(); toast(L('Saken ligger nå i køen til saksbehandler','The case is now in the case handler queue'));
+  });
+  $$('input[name=dec]').forEach(r => r.addEventListener('change', () => { $('#lowWrap').hidden = r.value !== 'lavere' || !r.checked; }));
+  const d = $('#decSave'); if(d) d.addEventListener('click', () => {
+    const dec = ($('input[name=dec]:checked') || {}).value, text = $('#decText').value.trim();
+    if(!dec){ toast(L('Velg en beslutning','Choose a decision')); return; }
+    if(text.length < 30){ toast(L('Begrunnelsen må være minst 30 tegn','The reasons must be at least 30 characters')); return; }
+    if(dec === 'avslag' && !$('#decAdvice').checked){ toast(L('Henvis kunden til gjeldsrådgivning ved avslag','Refer the customer to debt advice for a rejection')); return; }
+    const amount = dec === 'lavere' ? Math.max(10000, Number($('#lowAmt').value) || 10000) : null;
+    a.review = { date:iso(TODAY), by:L('Deg (demo)','You (demo)'), decision: dec === 'avslag' ? 'avslag' : 'innvilget', amount, reason:Lg(text, text) };
+    const manual = !a.request;
+    a.status = manual ? (dec === 'avslag' ? 'manuell-avslatt' : 'manuell-innvilget') : (dec === 'avslag' ? 'vurdert-avslatt' : 'vurdert-innvilget');
+    a.log.push({ d:iso(TODAY), t: manual ? (dec === 'avslag' ? Lg('Manuell vurdering: avslått. Begrunnelse sendt til kunden.','Manual review: rejected. Reasons sent to the customer.') : Lg(`Manuell vurdering: innvilget${amount ? ' ' + money(amount, COUNTRY[a.country].cur) : ''}. Begrunnelse sendt til kunden.`, `Manual review: approved${amount ? ' ' + money(amount, COUNTRY[a.country].cur) : ''}. Reasons sent to the customer.`)) : dec === 'avslag' ? Lg('Ny vurdering: avslag står. Begrunnelse sendt til kunden.','Review: rejection upheld. Reasons sent to the customer.') : Lg(`Ny vurdering: innvilget${amount ? ' ' + money(amount, COUNTRY[a.country].cur) : ''}. Begrunnelse sendt til kunden.`, `Review: approved${amount ? ' ' + money(amount, COUNTRY[a.country].cur) : ''}. Reasons sent to the customer.`) });
+    saveApps(); render(); toast(L('Beslutningen er lagret og sendt til kunden','The decision is saved and sent to the customer'));
+  });
+};
+
+// ---------- Tidlig varsling ----------
+function vVarsling(){
+  const act = LOANS.filter(l => !['avtale','inkasso'].includes(l.stage));
+  const cnt = k => LOANS.filter(l => l.stage === k).length;
+  return `<div class="stack-l">
+    <div class="stack"><div class="eyebrow">${S('grpDemo')}</div><h1>${S('varsling')}</h1>
+      <p class="lede">${L('Kunder med tegn på betalingsproblemer. Lysvik Bank tar kontakt tidlig, tilbyr en løsning og henviser til gjeldsrådgivning før saken eventuelt overleveres til bankens eksterne inkassoselskap.','Customers showing signs of payment problems. Lysvik Bank makes contact early, offers a solution and refers to debt advice before the case is handed to the bank\'s external collection agency, if needed.')}</p></div>
+    ${sampleBanner()}
+    <div class="kpis">
+      <div class="kpi t-acc"><span class="v">${act.length}</span><span class="l">${L('Aktive saker','Active cases')}</span></div>
+      <div class="kpi t-bad"><span class="v">${LOANS.filter(l => risk(l) === 'hoy' && l.stage !== 'inkasso').length}</span><span class="l">${L('Høy risiko','High risk')}</span></div>
+      <div class="kpi t-ok"><span class="v">${cnt('avtale')}</span><span class="l">${L('Avtale om løsning','Agreed solution')}</span></div>
+      <div class="kpi t-warn"><span class="v">${cnt('inkasso')}</span><span class="l">${L('Overlevert til inkassoselskap, med tilbud dokumentert','Handed to collection agency, offer documented')}</span></div>
+    </div>
+    <div class="note"><b>${L('Bankens policy','Bank policy')}</b><span>${L('Banken krever av sin egen oppfølging at kunden har fått et tilbud før saken overleveres til inkassoselskapet. Det går lenger enn CCD2 art. 35, som krever rimelig imøtekommenhet før tvangsinndrivelse.','The bank requires its own follow-up to have made the customer an offer before the case is handed to the collection agency. This goes further than CCD2 Art. 35, which requires reasonable forbearance before enforcement.')}</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>${L('Lån','Loan')}</th><th>${L('Kunde','Customer')}</th><th>${L('Land','Country')}</th><th>${L('Saldo','Balance')}</th><th>${L('Viktigste signal','Main signal')}</th><th>${L('Risiko','Risk')}</th><th>${L('Steg','Stage')}</th></tr></thead><tbody id="loanRows">
+      ${[...LOANS].sort((x, y) => ({hoy:0, middels:1, lav:2})[risk(x)] - ({hoy:0, middels:1, lav:2})[risk(y)]).map(l => `<tr class="click" data-id="${l.id}" tabindex="0"><td class="mono">${l.id}</td><td>${esc(l.name)}</td><td>${flag(l.country)}</td><td class="num">${money(l.balance, COUNTRY[l.country].cur)}</td><td>${esc(tx(signals(l)[0] || Lg('–','–')))}</td><td>${rpillR(risk(l))}</td><td><span class="pill ${l.stage === 'inkasso' ? 'bad' : l.stage === 'avtale' ? 'ok' : 'acc'}">${stg(l.stage)}</span></td></tr>`).join('')}
+    </tbody></table></div>
+  </div>`;
+}
+AFTER.varsling = () => { $$('#loanRows tr.click').forEach(tr => { const go = () => location.hash = 'lan-' + tr.dataset.id; tr.addEventListener('click', go); tr.addEventListener('keydown', e => { if(e.key === 'Enter') go(); }); }); };
+
+let OFFER = { kind:'extend', extra:24 };
+function vLan(l){
+  const C = COUNTRY[l.country], si = STAGES.indexOf(l.stage);
+  if(!l.offer){ let o = offerOpts(l, OFFER.kind); if(!o.length){ OFFER = { kind:'defer', extra:OFFERS.defer.opts[1] }; o = OFFERS.defer.opts; } if(!o.includes(OFFER.extra)) OFFER.extra = o[Math.min(1, o.length - 1)]; }
+  const eff = offerEffect(l, l.offer || OFFER);
+  const advice = l.country === 'SE' ? L('kommunal budsjett- og gjeldsrådgivning','municipal budget and debt advice') : L('Navs økonomiske rådgivning','Nav\'s financial advice service');
+  const canOffer = ['signal','kontaktet','tilbud'].includes(l.stage);
+  return `<div class="stack-l">
+    <div class="stack"><a href="#varsling" style="font-size:13px">← ${S('varsling')}</a>
+      <div class="row" style="justify-content:space-between"><h1 style="font-size:30px">${esc(l.name)}</h1>${rpillR(risk(l))}</div>
+      <div class="stages">${STAGES.map((k,i) => `<span class="${i === si ? 'on' : i < si ? 'done' : ''}">${stg(k)}</span>`).join('')}</div></div>
+    ${sampleBanner()}
+    <div class="split">
+      <div class="stack">
+        <section class="panel"><h2 class="h-card">${L('Signaler','Signals')}</h2><div class="factors">${signals(l).map(s => `<div class="factor"><span class="ico warn">!</span><div>${esc(tx(s))}</div><span></span></div>`).join('') || `<p class="muted">${L('Ingen aktive signaler.','No active signals.')}</p>`}</div></section>
+        <section class="panel"><h2 class="h-card">${L('Lånet','The loan')}</h2><dl class="meta"><dt>${L('Lån','Loan')}</dt><dd class="mono">${l.id}</dd><dt>${L('Produkt','Product')}</dt><dd>${prod(l.product)}</dd><dt>${L('Land','Country')}</dt><dd>${cn(l.country)}</dd><dt>${L('Saldo','Balance')}</dt><dd class="num">${money(l.balance, C.cur)}</dd><dt>${L('Rente','Interest')}</dt><dd class="num">${pct(l.rate, 1)}</dd><dt>${L('Styringsrente','Policy rate')}</dt><dd class="num">${pct(policyRate(l.country).v, 2)} <small class="muted">(${esc(apiName(policyRate(l.country).api))}, ${L('fiktiv','fictional')})</small></dd><dt>${L('Gjenstående','Remaining')}</dt><dd>${l.months} ${L('mnd.','months')}</dd><dt>${L('Månedlig beløp','Monthly payment')}</dt><dd class="num">${money(monthly(l), C.cur)}</dd></dl></section>
+        <section class="panel"><h2 class="h-card">${L('Logg','Log')}</h2><ul class="log">${l.log.map(x => `<li><time>${fmtD(parseIso(x.d))}</time><span>${esc(tx(x.t))}</span></li>`).join('')}</ul></section>
+      </div>
+      <div class="stack sticky">
+        <section class="panel stack"><h2 class="h-card">${l.offer ? L('Tilbudet','The offer') : L('Velg tilbud','Choose an offer')}</h2>
+          ${l.offer ? `<div class="suggest"><b>${esc((s => s.charAt(0).toUpperCase() + s.slice(1))(offerName(l.offer, LANG === 'en' ? 'en' : 'no')))}</b><span class="muted" style="font-size:13px">${L('Gitt','Made')} ${fmtD(parseIso(l.offer.dateIso))} · ${L('henvist til','referred to')} ${advice}</span></div>`
+          : `<div class="choice" role="radiogroup" aria-label="${L('Type tilbud','Type of offer')}">${Object.keys(OFFERS).map(k => `<label><input type="radio" name="ok" value="${k}" ${OFFER.kind === k ? 'checked' : ''} ${offerOpts(l, k).length ? '' : 'disabled'}> ${L(...OFFERS[k].t)}</label>`).join('')}</div>
+            ${!offerOpts(l, 'extend').length ? `<p class="muted" style="font-size:12.5px; margin:0">${L('Lengre nedbetalingstid er ikke mulig: forbrukslån må nedbetales innen 5 år i Norge (utlånsforskriften § 13).','A longer repayment period is not possible: consumer loans must be repaid within 5 years in Norway (lending regulation s. 13).')}</p>` : ''}
+            <label class="f">${L('Omfang','Extent')}<select id="offerExtra">${offerOpts(l, OFFER.kind).map(v => `<option value="${v}" ${v === OFFER.extra ? 'selected' : ''}>${v} ${L(...OFFERS[OFFER.kind].unit)}</option>`).join('')}</select></label>`}
+          <div class="cmp"><div><small>${L('Per måned i dag','Per month today')}</small><b>${money(eff.now, C.cur)}</b></div><div><small>${L('Per måned med tilbudet','Per month with the offer')}</small><b>${money(eff.after, C.cur)}</b></div></div>
+          <p class="muted" style="font-size:13px">${esc(tx(eff.note))}</p>
+          ${canOffer && !l.offer ? `<label class="chk"><input type="checkbox" id="offAdvice" checked><span>${L(`Henvis til ${advice}`, `Refer to ${advice}`)}<small>${l.country === 'SE' ? L('CCD2 art. 36(3), gjennomført i konsumentkreditlagen','CCD2 Art. 36(3), implemented in the Consumer Credit Act') : L('Lysvik Banks policy','Lysvik Bank\'s policy')}</small></span></label>` : ''}
+          ${!['avtale','inkasso'].includes(l.stage) && l.offer ? agencyCheck(l) : ''}
+          <div class="row">
+            ${l.stage === 'signal' ? `<button class="btn" id="actContact">${L('Registrer kontakt','Register contact')}</button>` : ''}
+            ${canOffer && !l.offer ? `<button class="btn primary" id="actOffer">${L('Send tilbud til kunden','Send offer to the customer')}</button>` : ''}
+            ${l.stage === 'tilbud' ? `<button class="btn primary" id="actAgree">${L('Kunden godtar','Customer accepts')}</button>` : ''}
+            ${!['avtale','inkasso'].includes(l.stage) ? `<button class="btn danger" id="actColl" ${l.offer ? '' : 'disabled aria-disabled="true"'}>${L('Overlever til inkassoselskap','Hand to collection agency')}</button>` : ''}
+          </div>
+          ${!l.offer && !['avtale','inkasso'].includes(l.stage) ? `<p class="muted" style="font-size:12.5px">${L('Overlevering til inkassoselskapet er sperret til et tilbud er gitt og dokumentert.','Handover to the collection agency is blocked until an offer has been made and documented.')}</p>` : ''}
+        </section>
+        <section class="panel"><h2 class="h-card">${L(`Regler i ${cn(l.country)}`, `Rules in ${cn(l.country)}`)}</h2><ul class="rights">
+          ${l.country === 'SE' ? `<li><span>${L('Rutiner for tidlig oppdagelse','Early detection procedures')}</span>${rpill(new Date() < new Date(2026, 10, 20) ? 'from' : 'law')}<small>${L('Konsumentkreditlagen 6 kap. 11 § (CCD2 art. 36(2))','Consumer Credit Act ch. 6 s. 11 (CCD2 Art. 36(2))')}</small></li><li><span>${L('Alternativer før tvangsinndrivelse','Alternatives before enforcement')}</span>${rpill(new Date() < new Date(2026, 10, 20) ? 'from' : 'law')}<small>${L('Konsumentkreditlagen 6 kap. 12 § (CCD2 art. 35)','Consumer Credit Act ch. 6 s. 12 (CCD2 Art. 35)')}</small></li>`
+          : `<li><span>${L('Tidlig oppdagelse og imøtekommenhet','Early detection and forbearance')}</span>${rpill('coming')}<small>${L('CCD2 art. 35–36. Ikke tatt inn i EØS-avtalen ennå.','CCD2 Art. 35–36. Not yet part of the EEA Agreement.')}</small></li><li><span>${L('Tilpasset inndriving og pause (gjelder inkassoselskapet)','Adapted collection and pause (applies to the collection agency)')}</span>${rpill('coming')}<small>${L('Ny inkassolov §§ 14 og 17, vedtatt 21.4.2026, ikke i kraft','New Debt Collection Act ss. 14 and 17, passed 21.4.2026, not in force')}</small></li>`}
+          <li><span>${L('Tilbud før overlevering til inkasso','Offer before handover to collection')}</span>${rpill('policy')}<small>${L('Lysvik Banks policy i begge land','Lysvik Bank\'s policy in both countries')}</small></li>
+        </ul></section>
+      </div>
+    </div></div>`;
+}
+AFTER.lan = h => {
+  const l = loanById(h.slice(4)); if(!l) return;
+  $$('input[name=ok]').forEach(r => r.addEventListener('change', () => { const o = offerOpts(l, r.value); OFFER = { kind:r.value, extra:o[Math.min(1, o.length - 1)] }; render(); }));
+  const ex = $('#offerExtra'); if(ex) ex.addEventListener('change', () => { OFFER.extra = Number(ex.value); render(); });
+  const now = iso(TODAY);
+  const c = $('#actContact'); if(c) c.addEventListener('click', () => { l.stage = 'kontaktet'; l.log.push({ d:now, t:Lg('Kunden kontaktet i nettbanken og på SMS','Customer contacted in online banking and by text message') }); saveLoans(); render(); toast(L('Kontakt registrert','Contact registered')); });
+  const o = $('#actOffer'); if(o) o.addEventListener('click', () => {
+    if(!$('#offAdvice').checked){ toast(L('Henvis kunden til gjeldsrådgivning','Refer the customer to debt advice')); return; }
+    l.offer = { ...OFFER, dateIso:now }; l.stage = 'tilbud';
+    l.log.push({ d:now, t:Lg(`Tilbud gitt: ${offerName(l.offer, 'no')}. Henvist til gjeldsrådgivning.`, `Offer made: ${offerName(l.offer, 'en')}. Referred to debt advice.`) });
+    saveLoans(); render(); toast(L('Tilbudet er sendt og dokumentert','The offer is sent and documented'));
+  });
+  const a = $('#actAgree'); if(a) a.addEventListener('click', () => { l.stage = 'avtale'; l.log.push({ d:now, t:Lg('Kunden godtok tilbudet','The customer accepted the offer') }); saveLoans(); render(); toast(L('Avtalen er registrert','The agreement is registered')); });
+  const k = $('#actColl'); if(k) k.addEventListener('click', () => { if(!l.offer) return; l.stage = 'inkasso'; l.log.push({ d:now, t:Lg('Overlevert til inkassoselskapet med dokumentasjon av tilbud og kontakt','Handed to the collection agency with documentation of the offer and contact') }); if(l.country === 'NO') l.log.splice(l.log.length-1, 0, { d:now, t:Lg('Inkassobevilling kontrollert i Finanstilsynets register','Debt collection licence checked in the Financial Supervisory Authority register') }); saveLoans(); render(); toast(L('Overlevert til inkassoselskapet','Handed to the collection agency')); });
+};
+
+// ---------- Innsikt og etterlevelse ----------
+function vInnsikt(){
+  const rej = APPS.filter(a => assess(a).outcome === 'avslag' && a.auto);
+  const req = APPS.filter(a => a.request);
+  const done = req.filter(a => a.review);
+  const chg = done.filter(a => a.review.decision === 'innvilget').length;
+  const times = done.map(a => daysBetween(parseIso(a.request.date), parseIso(a.review.date))).sort((x, y) => x - y);
+  const med = times.length ? times[Math.floor(times.length/2)] : null;
+  const dialog = LOANS.filter(l => ['kontaktet','tilbud','avtale'].includes(l.stage));
+  const byC = c => ({ apps:APPS.filter(a => a.country === c).length, rej:rej.filter(a => a.country === c).length, req:req.filter(a => a.country === c).length, loans:LOANS.filter(l => l.country === c).length });
+  const ai = [
+    [Lg('Konsekvensvurdering for grunnleggende rettigheter','Fundamental rights impact assessment'), 'art. 27', 'warn', Lg('Påbegynt','Started')],
+    [Lg('Menneskelig tilsyn som kan overstyre','Human oversight that can override'), 'art. 14, 26', 'ok', Lg('Ny vurdering på plass','Review in place')],
+    [Lg('Logg i minst seks måneder','Logs for at least six months'), 'art. 26(6)', 'ok', Lg('Alle steg logges','All steps logged')],
+    [Lg('Informere personer om bruk av systemet','Inform persons about the use of the system'), 'art. 26(11)', 'ok', Lg('Står i forklaringen','Included in the explanation')],
+    [Lg('Forklaring av beslutninger','Explanation of decisions'), 'art. 86', 'ok', Lg('Forklaringsmodulen','Explanation module')]
+  ];
+  return `<div class="stack-l">
+    <div class="stack"><div class="eyebrow">${S('grpDemo')}</div><h1>${S('innsikt')}</h1>
+      <p class="lede">${L('Måltallene fra løsningsforslaget og status mot kravene i CCD2 og AI Act.','The measures from the proposal and status against the requirements of CCD2 and the AI Act.')}</p></div>
+    ${sampleBanner()}
+    <div class="kpis">
+      <div class="kpi t-ok"><span class="v">${rej.length ? pct(100) : '–'}</span><span class="l">${L('Automatiske avslag med forklaring levert','Automated rejections with explanation delivered')}</span></div>
+      <div class="kpi t-acc"><span class="v">${req.length}</span><span class="l">${L(`Forespørsler om ny vurdering, ${chg} av ${done.length} endret`, `Review requests, ${chg} of ${done.length} changed`)}</span></div>
+      <div class="kpi t-info"><span class="v">${med == null ? '–' : med + ' ' + L('d','d')}</span><span class="l">${L('Median tid fra forespørsel til svar','Median time from request to answer')}</span></div>
+      <div class="kpi t-ok"><span class="v">${dialog.length}</span><span class="l">${L(`Kunder i tidlig dialog, ${LOANS.filter(l => l.stage === 'avtale').length} med avtale`, `Customers in early dialogue, ${LOANS.filter(l => l.stage === 'avtale').length} with an agreement`)}</span></div>
+    </div>
+    <section class="stack"><h2>${L('Per land','By country')}</h2>
+      <div class="tbl-wrap"><table><thead><tr><th>${L('Land','Country')}</th><th>${L('Søknader','Applications')}</th><th>${L('Automatiske avslag','Automated rejections')}</th><th>${L('Forespørsler om ny vurdering','Review requests')}</th><th>${L('Lån i tidlig varsling','Loans in early warning')}</th><th>CCD2</th></tr></thead><tbody>
+      ${['NO','SE'].map(c => { const b = byC(c); return `<tr><td>${flag(c)} ${cn(c)}</td><td class="num">${b.apps}</td><td class="num">${b.rej}</td><td class="num">${b.req}</td><td class="num">${b.loans}</td><td>${c === 'SE' ? `<span class="pill ok">${L('Gjelder fra 20.11.2026','Applies from 20 Nov 2026')}</span>` : `<span class="pill info">${L('Dato ikke fastsatt','No date set')}</span>`}</td></tr>`; }).join('')}
+      </tbody></table></div></section>
+    <section class="stack"><h2>${L('Bakgrunn fra åpne data','Background from open data')}</h2>
+      <div class="kpis">${API_DATA.ssb.map(x => `<div class="kpi"><span class="v">${pct(x.v, x.u === 'pct' ? 1 : 0)}</span><span class="l">${tx(x.t)} <span class="mono muted">(${L('tabell','table')} ${x.tab})</span></span></div>`).join('')}</div>
+      <div class="row" style="gap:8px 16px">${apiTag('ssb')}<span class="muted" style="font-size:13px">${L('Styringsrente','Policy rate')}: ${cn('NO')} ${pct(policyRate('NO').v, 2)}, ${cn('SE')} ${pct(policyRate('SE').v, 2)}</span></div>
+      <p class="muted" style="font-size:13px">${L('Tallene settes ved siden av bankens egne måltall, for eksempel for å se om flere ber om hjelp når arbeidsledigheten stiger. SSB-tallene gjelder Norge.','The figures are shown next to the bank\'s own measures, for example to see whether more customers ask for help when unemployment rises. The SSB figures apply to Norway.')}</p></section>
+    <section class="stack"><div class="panel-h" style="margin:0"><h2>${L('AI Act: høyrisikokrav for kredittscoring','AI Act: high-risk requirements for credit scoring')}</h2><span class="pill acc">${L(`${daysTo(D_AIACT)} dager til 2.12.2027`, `${daysTo(D_AIACT)} days to 2 Dec 2027`)}</span></div>
+      <div class="tbl-wrap"><table><thead><tr><th>${L('Krav','Requirement')}</th><th>${L('Hjemmel','Basis')}</th><th>Status</th></tr></thead><tbody>
+      ${ai.map(r => `<tr><td>${tx(r[0])}</td><td class="mono">${r[1]}</td><td><span class="pill ${r[2]}">${tx(r[3])}</span></td></tr>`).join('')}</tbody></table></div>
+      <p class="muted" style="font-size:13px">${L('Status er eksempeldata. Kravene gjelder hvis bankens kredittmodell er et AI-system etter art. 3(1). AI Act er ikke tatt inn i EØS-avtalen ennå.','Status is sample data. The requirements apply if the bank\'s credit model is an AI system under Art. 3(1). The AI Act is not yet part of the EEA Agreement.')}</p></section>
+  </div>`;
+}
+
+// ---------- Oppstart ----------
+function setLang(x){ LANG = x; try{ sessionStorage.setItem('ci_lang', x); }catch(e){} render(); }
+$$('#langSwitch button').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
+$('#resetBtn').addEventListener('click', () => { ['ci_apps2','ci_loans2'].forEach(store.del); REQ_FORM = false; BC = { ...BC_DEF }; OFFER = { kind:'extend', extra:24 }; FILTER = { land:'alle', st:'alle' }; load(); render(); toast(L('Demodataene er tilbakestilt','The demo data has been reset')); });
+window.addEventListener('hashchange', () => { REQ_FORM = false; render(); });
+load(); render();
+</script>
+</body>
+</html>
