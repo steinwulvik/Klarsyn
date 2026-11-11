@@ -2,6 +2,8 @@
 
 En klikkbar konseptdemo av et løsningsforslag: et lag oppå bankens utlånssystemer som forklarer avslag på kredittsøknader, lar kunden be om ny vurdering av et menneske, og fanger opp kunder med betalingsproblemer før saken går til inkasso. Banken trenger ikke bytte kredittmodell. Lysvik Bank, leverandøren Kystlys Software og Klarsyn er fiktive, og alle kunder, søknader og lån er syntetiske.
 
+**Live-demo:** [klarsyn.pages.dev](https://klarsyn.pages.dev) (norsk og engelsk, åpner på engelsk)
+
 ![Skjermbilde: et avslag med grunnlaget for beslutningen og kundens rett til ny vurdering](skjermbilde.png)
 
 ## Bakgrunn
